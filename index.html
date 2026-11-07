@@ -142,7 +142,7 @@ input[type=email],input[type=password]{width:100%;min-width:0;padding:10px;borde
 </style>
 
 <div class="wrap">
-  <header class="top"><div><div class="small" style="color:var(--accent);font-weight:600;letter-spacing:.04em" id="hello">Hola</div><h1>Mi Plan Financiero</h1></div><span class="muted small" id="today"></span></header>
+  <header class="top"><div><div class="small" style="color:var(--accent);font-weight:600;letter-spacing:.04em" id="hello">Hola</div><h1>Mi Plan Financiero</h1></div><div style="display:flex;align-items:center;gap:10px"><span class="muted small" id="today"></span><button type="button" class="btn tiny" data-act="go-datos">⚙ Mis datos</button></div></header>
   <div class="search" role="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.6-3.6"></path></svg><input id="q" type="search" placeholder="Buscar gastos, cobros, deudas, importes…" autocomplete="off" enterkeyhint="search" aria-label="Buscar"><button type="button" id="q-x" class="qx" hidden aria-label="Borrar la búsqueda"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg></button></div>
   <div id="q-out" class="qout" hidden></div>
   <p id="status" class="card">Cargando tus cuentas. Aquí verás tus próximos cobros, tus gastos y tus deudas.</p>
@@ -442,7 +442,7 @@ function renderInicio(){
     <div class="alert ${P.gap>0?"warn":"info"}"><div class="grow">${P.gap>0?`<strong>Faltan unos ${eur(P.gap,true)}</strong> hasta ${esc(mLong(P.last))}.`:`<strong>Cubiertos</strong> con lo previsto.`}<div class="small">${P.rescue?`Contando ${eur(P.rescue)} de dinero extra.`:""}${P.missing?` Falta poner el importe de ${P.missing} gasto${P.missing>1?"s":""}.`:""}</div></div></div>
   </section>
   ${renderColchon()}
-  <section class="section">
+  <section class="section" id="mis-datos" style="scroll-margin-top:16px">
     <div class="head"><h2>Mis datos</h2><button class="btn tiny" data-act="settings">Editar</button></div>
     <div class="rows"><div class="row"><span class="grow">Ingreso previsto al mes</span><span class="amt">${eur(st.income||0)}</span></div><div class="row"><span class="grow">Cobros</span><span class="small" style="text-align:right">${payPlan().map(p=>`${esc(satName(p.n))}: <strong>${eur(p.amount)}</strong>`).join("<br>")||"Sin indicar"}</span></div><div class="row"><span class="grow">Dinero extra esperado</span><span class="amt">${st.rescue!=null?eur(st.rescue):"Sin indicar"}</span></div></div>
     ${/^https?:\/\//.test(st.docUrl||"")?`<p class="small"><a href="${esc(st.docUrl)}" target="_blank" rel="noopener">Abrir mi documento</a></p>`:""}
@@ -581,7 +581,8 @@ const recFields=r=>[
 document.addEventListener("click",ev=>{
   const b=ev.target.closest("[data-act]");if(!b)return;
   const a=b.dataset.act,id=b.dataset.id;
-  if(a==="backup"){doBackup()}
+  if(a==="go-datos"){if(Q)clearQ();if(tab()!=="inicio"){location.hash="#inicio"}setTimeout(()=>{const el=$("#mis-datos");if(el)el.scrollIntoView({behavior:"smooth"})},60)}
+  else if(a==="backup"){doBackup()}
   else if(a==="import"){$("#imp").value="";$("#imp").click()}
   else if(a==="logout"){if(confirm("¿Cerrar sesión en este dispositivo?"))auth.signOut()}
   else if(a==="start-empty"){save(()=>db.collection("settings").doc("main").set({income:0,payPlan:[]}),"Listo. Empieza en Mis datos.")}
