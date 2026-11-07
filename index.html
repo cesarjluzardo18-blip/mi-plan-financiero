@@ -232,17 +232,56 @@ const setts=()=>S.settings[0]||{};
 const upd=(c,id,data)=>db.collection(c).doc(id).update(data);
 
 /* Cálculos */
-const nthSat=(y,mo,n)=>{const f=new Date(y,mo,1),first=1+((6-f.getDay()+7)%7);if(n===-1){let d=first;while(d+7<=new Date(y,mo+1,0).getDate())d+=7;return new Date(y,mo,d)}return new Date(y,mo,first+(n-1)*7)};
+const WD=["domingo","lunes","martes","miércoles","jueves","viernes","sábado"];
+const nthWd=(y,mo,n,wd)=>{const f=new Date(y,mo,1),first=1+((wd-f.getDay()+7)%7),last=new Date(y,mo+1,0).getDate();if(n===-1){let d=first;while(d+7<=last)d+=7;return new Date(y,mo,d)}return new Date(y,mo,first+(n-1)*7)};
 const payPlan=()=>setts().payPlan||[];
-const payDates=(y,mo)=>payPlan().map(p=>({date:nthSat(y,mo,p.n),amount:p.amount||0})).sort((a,b)=>a.date-b.date);
-const satName=n=>n===-1?"Último sábado":["Primer","Segundo","Tercer","Cuarto"][n-1]+" sábado";
+const payMode=()=>setts().payMode||"nsemana";
+const payWd=()=>{const w=setts().payWd;return w==null||w===""?6:Number(w)};
+const ORD=n=>n===-1?"Último":["Primer","Segundo","Tercer","Cuarto"][n-1];
+function payDates(y,mo){
+  const md=payMode(),wd=payWd(),last=new Date(y,mo+1,0).getDate(),out=[];
+  if(md==="semanal"){const a=(payPlan()[0]||{}).amount||0;if(a){let d=nthWd(y,mo,1,wd);while(d.getMonth()===mo){out.push({date:d,amount:a});d=new Date(y,mo,d.getDate()+7)}}}
+  else if(md==="nsemana")payPlan().filter(p=>p.n).forEach(p=>out.push({date:nthWd(y,mo,Number(p.n),wd),amount:p.amount||0}));
+  else payPlan().filter(p=>p.day).forEach(p=>out.push({date:new Date(y,mo,Math.min(Number(p.day),last)),amount:p.amount||0}));
+  return out.sort((a,b)=>a.date-b.date);
+}
+const monthIncome=()=>payPlan().length?payDates(now().getFullYear(),now().getMonth()).reduce((a,p)=>a+p.amount,0):(setts().income||0);
+function payDesc(){
+  const md=payMode(),w=WD[payWd()],pl=payPlan();if(!pl.length)return"";
+  if(md==="semanal")return`Cada ${w}: <strong>${eur((pl[0]||{}).amount||0)}</strong>`;
+  if(md==="nsemana")return pl.filter(p=>p.n).map(p=>`${ORD(Number(p.n))} ${w}: <strong>${eur(p.amount||0)}</strong>`).join("<br>");
+  return pl.filter(p=>p.day).map(p=>`${Number(p.day)>=31?"Último día":"Día "+Number(p.day)}: <strong>${eur(p.amount||0)}</strong>`).join("<br>");
+}
+const MODES=[["mensual","Una vez al mes"],["quincenal","Dos veces al mes (quincenal)"],["semanal","Cada semana"],["nsemana","Algunas semanas del mes (ej.: 1.º y 3.º sábado)"],["dias","Días concretos que yo elijo"]];
+function openPay(mode,keep){
+  const md=mode||payMode(),pl=keep||(mode&&mode!==payMode()?[]:payPlan()),wdOpts=[1,2,3,4,5,6,0].map(w=>[w,WD[w][0].toUpperCase()+WD[w].slice(1)]);
+  const f=[{id:"mode",label:"Cómo cobras",type:"select",value:md,options:MODES}];
+  const dayHint="Del 1 al 31. Si pones 31, cuenta como el último día del mes.";
+  if(md==="mensual")f.push({id:"d0",label:"Día del mes en que cobras",type:"int",value:pl[0]?.day??"",hint:dayHint},{id:"a0",label:"Cuánto cobras (€)",type:"money",value:pl[0]?.amount??""});
+  else if(md==="quincenal")f.push({id:"d0",label:"Primer cobro: día",type:"int",value:pl[0]?.day??15},{id:"a0",label:"Primer cobro (€)",type:"money",value:pl[0]?.amount??""},{id:"d1",label:"Segundo cobro: día",type:"int",value:pl[1]?.day??31,hint:dayHint},{id:"a1",label:"Segundo cobro (€)",type:"money",value:pl[1]?.amount??""});
+  else if(md==="semanal")f.push({id:"wd",label:"Qué día de la semana",type:"select",value:payWd(),options:wdOpts},{id:"a0",label:"Cuánto cobras cada semana (€)",type:"money",value:pl[0]?.amount??""});
+  else if(md==="nsemana"){f.push({id:"wd",label:"Qué día de la semana",type:"select",value:payWd(),options:wdOpts});
+    for(let k=0;k<4;k++)f.push({id:"n"+k,label:`Cobro ${k+1}: qué semana`,type:"select",value:pl[k]?.n??"",options:[["","No hay"],[1,"Primera"],[2,"Segunda"],[3,"Tercera"],[4,"Cuarta"],[-1,"Última"]]},{id:"a"+k,label:`Cobro ${k+1} (€)`,type:"money",value:pl[k]?.amount??""})}
+  else for(let k=0;k<4;k++)f.push({id:"d"+k,label:`Cobro ${k+1}: día del mes`,type:"int",value:pl[k]?.day??"",hint:k?"":"Deja vacíos los que no uses. "+dayHint},{id:"a"+k,label:`Cobro ${k+1} (€)`,type:"money",value:pl[k]?.amount??""});
+  const dlg=$("#dlg");if(dlg.open)dlg.close();
+  openForm("Cómo cobras",f,v=>{
+    let plan=[];const day=x=>Math.max(1,Math.min(31,Math.round(x)));
+    if(v.mode==="semanal")plan=[{amount:v.a0||0}];
+    else if(v.mode==="nsemana"){for(let k=0;k<4;k++)if(v["n"+k]!==""&&v["n"+k]!=null)plan.push({n:Number(v["n"+k]),amount:v["a"+k]||0})}
+    else for(let k=0;k<4;k++)if(v["d"+k])plan.push({day:day(v["d"+k]),amount:v["a"+k]||0});
+    const wd=v.wd!=null&&v.wd!==""?Number(v.wd):payWd();
+    save(()=>db.collection("settings").doc("main").set({...plainSettings(),payMode:v.mode,payWd:wd,payPlan:plan,income:plan.reduce((a,p)=>a+(p.amount||0),0)}),"Guardado");
+  },null,"Así la app sabe cuándo te entra el dinero y te avisa de lo que se cobra antes. Si cada mes cobras distinto, pon lo normal y luego anota en Ingresos lo que cobres de verdad.");
+  $("#f-mode").onchange=e=>openPay(e.target.value);
+}
+
 function nextPay(){const t=now();for(let k=0;k<3;k++){const x=new Date(t.getFullYear(),t.getMonth()+k,1),hit=payDates(x.getFullYear(),x.getMonth()).find(p=>daysTo(p.date)>0);if(hit)return hit}return null}
 const begun=r=>!(r.start&&r.start>ym(now()));
 const active=()=>S.recurring.filter(r=>r.active!==false&&begun(r));
 const budgets=()=>active().filter(r=>r.type==="presupuesto");
 const monthExp=m=>S.expenses.filter(e=>(e.date||"").startsWith(m));
 function month(){
-  const m=ym(now()),expected=setts().income||0,got=S.incomes.filter(i=>(i.date||"").startsWith(m)),gotSum=got.reduce((a,i)=>a+(i.amount||0),0),toCome=payDates(now().getFullYear(),now().getMonth()).filter(p=>daysTo(p.date)>0).reduce((a,p)=>a+p.amount,0),inc=got.length?gotSum+toCome:expected,commit=active().reduce((a,r)=>a+(r.amount||0),0);
+  const m=ym(now()),expected=monthIncome(),got=S.incomes.filter(i=>(i.date||"").startsWith(m)),gotSum=got.reduce((a,i)=>a+(i.amount||0),0),toCome=payDates(now().getFullYear(),now().getMonth()).filter(p=>daysTo(p.date)>0).reduce((a,p)=>a+p.amount,0),inc=got.length?gotSum+toCome:expected,commit=active().reduce((a,r)=>a+(r.amount||0),0);
   const exp=monthExp(m),bud=budgets();let extra=0;
   const spent=c=>exp.filter(e=>e.cat===c).reduce((a,e)=>a+e.amount,0);
   bud.forEach(b=>extra+=Math.max(0,spent(b.name)-b.amount));
@@ -336,7 +375,7 @@ function renderIngresos(M){
   const prev=Object.keys(byM).sort().reverse().slice(0,6);
   return`<section class="section"><div class="head"><h2>Ingresos de ${esc(now().toLocaleDateString("es-ES",{month:"long"}))}</h2><button class="btn tiny primary" data-act="inc-new">Añadir ingreso</button></div>
     <div class="rows">${list.map(i=>`<button class="row" data-act="inc-edit" data-id="${esc(i.id)}"><div class="grow"><strong>${esc(i.source)}</strong><div class="small muted">${esc(dShort(parseISO(i.date)))}</div></div><span class="amt">${eur(i.amount)}</span></button>`).join("")||`<div class="row muted">Aún no has añadido ingresos este mes. Mientras tanto, el cálculo usa ${eur(M.expected)} previstos.</div>`}</div>
-    ${M.registered?`<p class="small muted">El dinero libre suma lo que has añadido y los sábados que aún no han llegado. Si un sábado ya pasó y no lo añades, no cuenta.</p>`:""}
+    ${M.registered?`<p class="small muted">El dinero libre suma lo que has añadido y los cobros que aún no han llegado. Si un cobro ya pasó y no lo añades, no cuenta.</p>`:""}
     ${prev.length?`<div class="rows">${prev.map(k=>`<div class="row"><span class="grow">${esc(mLong(parseISO(k)))}</span><span class="amt">${eur(byM[k])}</span></div>`).join("")}</div>`:""}</section>`;
 }
 function closing(m){
@@ -394,7 +433,7 @@ function renderLedger(L){
   const body=L.rows.slice().reverse().map(r=>{const isIn=r.sum>0;return`<div class="row"><div class="date"><b>${r.day}</b><span>${mon(r.d)}</span></div><div class="grow"><strong style="color:${isIn?"var(--good)":"inherit"}">${isIn?"+":"−"}${eur(Math.abs(r.sum))}</strong><div class="small muted">${esc(desc(r.list))}</div></div><div style="text-align:right"><span class="small muted" style="display:block">te queda</span><span class="amt" style="color:${col(r.run)}">${eur(r.run)}</span></div></div>`}).join("")||'<div class="row muted">Aún no has anotado nada este mes. Añade un ingreso, un gasto o marca un cobro como pagado y empezará a contar.</div>';
   const hoy=`<div class="row today-line"><span class="grow"><strong>Hoy</strong> <span class="small muted">${esc(dShort(now()))}</span></span><span class="small muted">te queda</span><span class="amt" style="color:${L.now<0?"var(--bad)":"var(--good)"}">${eur(L.now)}</span></div>`;
   const fut=L.fut.map(x=>{const late=x.kind==="cob"&&x.day&&x.day<today;const tag=x.kind==="inc"?'<span class="pill good">Previsto</span>':late?'<span class="pill bad">Sin pagar</span>':'<span class="pill plain">Pendiente</span>';const inner=`<div class="date">${x.day?`<b>${x.day}</b><span>${mon(now())}</span>`:"<b>…</b>"}</div><div class="grow"><strong style="color:${x.amt>0?"var(--good)":"inherit"}">${x.amt>0?"+":"−"}${eur(Math.abs(x.amt))}</strong><div class="small muted">${esc(x.label)}</div>${tag}</div><div style="text-align:right"><span class="small muted" style="display:block">te quedará</span><span class="amt" style="color:${col(x.run)}">${eur(x.run)}</span></div>`;return x.kind==="cob"?`<button class="row fut" data-act="paid" data-id="${esc(x.id)}" title="Marcar como pagado">${inner}</button>`:`<div class="row fut">${inner}</div>`}).join("");
-  return`<section class="section"><div class="head"><h2>Cómo va el mes</h2><span class="small muted">Día a día</span></div><div class="rows">${hoy}${body}${fut?`<div class="row" style="background:var(--surface-2)"><strong class="small">Lo que viene este mes, en orden</strong></div>${fut}`:""}<div class="row"><strong class="grow">Saldo previsto a fin de mes</strong><span class="amt" style="color:${L.end<0?"var(--bad)":"var(--good)"}">${eur(L.end)}</span></div></div><p class="small muted">Arriba, hoy y lo más reciente; bajando, los días anteriores. Al final, la proyección de lo que queda de mes: suma cada ingreso de tus sábados cuando le toca y resta cada pago en su fecha, así ves con cuánto llegas a cada momento. Cuando cobres, anota el ingreso y la previsión se sustituye por el real. Toca un pago pendiente para marcarlo como pagado.</p></section>`;
+  return`<section class="section"><div class="head"><h2>Cómo va el mes</h2><span class="small muted">Día a día</span></div><div class="rows">${hoy}${body}${fut?`<div class="row" style="background:var(--surface-2)"><strong class="small">Lo que viene este mes, en orden</strong></div>${fut}`:""}<div class="row"><strong class="grow">Saldo previsto a fin de mes</strong><span class="amt" style="color:${L.end<0?"var(--bad)":"var(--good)"}">${eur(L.end)}</span></div></div><p class="small muted">Arriba, hoy y lo más reciente; bajando, los días anteriores. Al final, la proyección de lo que queda de mes: suma cada cobro tuyo cuando le toca y resta cada pago en su fecha, así ves con cuánto llegas a cada momento. Cuando cobres, anota el ingreso y la previsión se sustituye por el real. Toca un pago pendiente para marcarlo como pagado.</p></section>`;
 }
 function renderInicio(){
   const M=month(),t=now(),m=ym(t),ch=charges(),P=plan(),st=setts(),L=ledger();
@@ -408,7 +447,7 @@ function renderInicio(){
   const max=Math.max(1,...Object.values(tot));
   let bars="";for(let d=1;d<=days;d++){const v=tot[d]||0,h=v?Math.max(8,v/max*100):0;const isT=d===t.getDate();
     bars+=`<div class="day${isT?" today":""}" title="Día ${d}${v?": "+eur(v):""}">${v?`<span class="val" style="bottom:calc(${h*.78}% + 3px)">${Math.round(v)}</span><div class="bar${paidD[d]>=v?" paid":""}" style="height:${h*.78}%"></div>`:""}<div class="tick"></div>${v||isT?`<span class="dnum">${d}</span>`:""}</div>`}
-  const np=nextPay(),nm=new Date(t.getFullYear(),t.getMonth()+1,1),firstNext=payDates(nm.getFullYear(),nm.getMonth())[0];let cashTxt=`<button class="btn tiny" data-act="settings">Indicar tus sábados de cobro</button>`;
+  const np=nextPay(),nm=new Date(t.getFullYear(),t.getMonth()+1,1),firstNext=payDates(nm.getFullYear(),nm.getMonth())[0];let cashTxt=`<button class="btn tiny" data-act="paymode">Indicar cómo cobras</button>`;
   if(np){const need=ch.filter(c=>c.d<np.date).reduce((a,c)=>a+c.r.amount,0),needM=firstNext?ch.filter(c=>c.d<firstNext.date).reduce((a,c)=>a+c.r.amount,0):0;cashTxt=`<div class="stack" style="gap:4px"><span>Próximo ingreso: <strong>${esc(np.date.toLocaleDateString("es-ES",{weekday:"long",day:"numeric",month:"short"}).replace(".",""))}, ${eur(np.amount)}</strong>. Antes se cobran <strong>${eur(need)}</strong>.</span>${firstNext?`<span>Hasta tu primer ingreso de ${esc(nm.toLocaleDateString("es-ES",{month:"long"}))}, el ${esc(dShort(firstNext.date))}, se cobran <strong>${eur(needM)}</strong>.</span>`:""}</div>`}
   const cards=S.debts.filter(d=>d.kind==="card"),avail=cards.reduce((a,d)=>a+(d.limit?Math.max(0,d.limit-(d.balance||0)):0),0),hasLim=cards.some(d=>d.limit),bal=cards.reduce((a,d)=>a+(d.balance||0),0),ini=cards.reduce((a,d)=>a+(d.initial||0),0);
   const sim=simulate(st.extra,st.pauseUntil);
@@ -444,7 +483,7 @@ function renderInicio(){
   ${renderColchon()}
   <section class="section" id="mis-datos" style="scroll-margin-top:16px">
     <div class="head"><h2>Mis datos</h2><button class="btn tiny" data-act="settings">Editar</button></div>
-    <div class="rows"><div class="row"><span class="grow">Ingreso previsto al mes</span><span class="amt">${eur(st.income||0)}</span></div><div class="row"><span class="grow">Cobros</span><span class="small" style="text-align:right">${payPlan().map(p=>`${esc(satName(p.n))}: <strong>${eur(p.amount)}</strong>`).join("<br>")||"Sin indicar"}</span></div><div class="row"><span class="grow">Dinero extra esperado</span><span class="amt">${st.rescue!=null?eur(st.rescue):"Sin indicar"}</span></div></div>
+    <div class="rows"><div class="row"><span class="grow">Ingreso previsto al mes</span><span class="amt">${eur(monthIncome())}</span></div><div class="row"><span class="grow">Cobros</span><span class="small" style="text-align:right">${payDesc()||"Sin indicar"}<br><button class="btn tiny" data-act="paymode" style="margin-top:6px">Cambiar cómo cobras</button></span></div><div class="row"><span class="grow">Dinero extra esperado</span><span class="amt">${st.rescue!=null?eur(st.rescue):"Sin indicar"}</span></div></div>
     ${/^https?:\/\//.test(st.docUrl||"")?`<p class="small"><a href="${esc(st.docUrl)}" target="_blank" rel="noopener">Abrir mi documento</a></p>`:""}
     <div class="card stack"><span class="small muted">Sesión iniciada como <strong>${esc(db&&db.email||"")}</strong></span><div class="actions" style="justify-content:flex-start"><button class="btn tiny" data-act="backup">Descargar copia de seguridad</button><button class="btn tiny" data-act="import">Importar copia</button><button class="btn tiny danger" data-act="logout">Cerrar sesión</button></div></div>
     <p class="small muted">La app no ve tu banco, así que los cobros y saldos los marcas tú.</p>
@@ -585,7 +624,7 @@ document.addEventListener("click",ev=>{
   else if(a==="backup"){doBackup()}
   else if(a==="import"){$("#imp").value="";$("#imp").click()}
   else if(a==="logout"){if(confirm("¿Cerrar sesión en este dispositivo?"))auth.signOut()}
-  else if(a==="start-empty"){save(()=>db.collection("settings").doc("main").set({income:0,payPlan:[]}),"Listo. Empieza en Mis datos.")}
+  else if(a==="start-empty"){save(()=>db.collection("settings").doc("main").set({income:0,payPlan:[],payMode:"mensual"}),"Listo. Ahora indica cómo cobras.").then(()=>setTimeout(()=>openPay("mensual"),300))}
   else if(a==="quick"){const q=QUICK[Number(b.dataset.i)];if(q)save(()=>db.collection("expenses").add({amount:q.amount,concept:q.concept,place:q.place||"",cat:q.cat,pay:q.pay||"",date:iso(now())}),`${q.concept} ${eur(q.amount)} guardado`)}
   else if(a==="cushion"){const s=setts();openForm("Colchón",[{id:"cushionHave",label:"Lo que tienes apartado (€)",type:"money",value:s.cushionHave??0},{id:"cushionGoal",label:"Meta (€)",type:"money",value:s.cushionGoal??250,hint:"Recomendado: lo que pagas en un mes de gastos fijos básicos."}],v=>save(()=>db.collection("settings").doc("main").set({...plainSettings(),cushionHave:v.cushionHave||0,cushionGoal:v.cushionGoal||0}),"Colchón actualizado"),null,"Es dinero solo para los meses en que entra menos. No es para gastos previstos.")}
   else if(a==="paid"){const r=find("recurring",id),m=ym(now()),p=new Set(r.paid||[]),po={...(r.paidOn||{})};
@@ -596,7 +635,8 @@ document.addEventListener("click",ev=>{
   else if(a==="rec-edit"){const r=find("recurring",id);openForm("Editar",recFields(r),v=>save(async()=>{await upd("recurring",id,v);if(r.name&&v.name&&v.name!==r.name){const mv=S.expenses.filter(e=>e.cat===r.name);for(const e of mv)await upd("expenses",e.id,{cat:v.name})}},"Guardado"),()=>save(()=>db.collection("recurring").doc(id).delete(),"Eliminado"))}
   else if(a==="exp-edit"){const e=find("expenses",id),cats=[...new Set([...budgets().map(x=>x.name),...extraCats(),e.cat])];
     openForm("Editar gasto",[{id:"amount",label:"Importe (€)",type:"money",value:e.amount,required:true},{id:"concept",label:"Qué compraste",value:e.concept,required:true},{id:"place",label:"Dónde lo compraste",value:e.place||"",list:PLACES()},{id:"date",label:"Fecha",type:"date",value:e.date,required:true},{id:"cat",label:"Categoría",type:"select",value:e.cat,options:cats.map(c=>[c,c])},{id:"pay",label:"Cómo pagaste",type:"select",value:e.pay||"",options:[["","Sin indicar"],...[...new Set([...PAYS(),e.pay].filter(Boolean))].map(c=>[c,c])]}],v=>save(()=>upd("expenses",id,v),"Guardado"),()=>save(()=>db.collection("expenses").doc(id).delete(),"Eliminado"))}
-  else if(a==="settings"){const s=setts();openForm("Mis datos",[{id:"p1",label:"Primer sábado (€)",type:"money",value:payPlan()[0]?.amount??""},{id:"p2",label:"Segundo sábado (€)",type:"money",value:payPlan()[1]?.amount??""},{id:"p3",label:"Último cobro del mes (€)",type:"money",value:payPlan()[2]?.amount??""},{id:"p3n",label:"Ese último cobro llega el",type:"select",value:payPlan()[2]?.n??3,options:[[3,"Tercer sábado"],[4,"Cuarto sábado"],[-1,"Último sábado"]]},{id:"rescue",label:"Dinero extra esperado (€)",type:"money",value:s.rescue??"",hint:"Una devolución, una ayuda… Déjalo vacío si no esperas nada."},{id:"name",label:"Tu nombre",value:s.name||"",hint:"Para saludarte arriba."},{id:"partner",label:"Con quién ahorras (opcional)",value:s.partner||"",hint:"Aparece en la pestaña Ahorro."},{id:"extraCats",label:"Tus categorías de gasto (opcional)",value:s.extraCats||"",hint:"Separadas por comas. Por ejemplo: Coche, Hijos, Documentos."},{id:"docUrl",label:"Enlace a un documento tuyo (opcional)",value:s.docUrl||""}],v=>{const{p1,p2,p3,p3n,...rest}=v;const pl=[{n:1,amount:p1||0},{n:2,amount:p2||0},{n:Number(p3n),amount:p3||0}];save(()=>db.collection("settings").doc("main").set({...plainSettings(),...rest,payPlan:pl,income:pl.reduce((a,p)=>a+p.amount,0)}),"Guardado")})}
+  else if(a==="paymode"){openPay()}
+  else if(a==="settings"){const s=setts();openForm("Mis datos",[{id:"rescue",label:"Dinero extra esperado (€)",type:"money",value:s.rescue??"",hint:"Una devolución, una ayuda… Déjalo vacío si no esperas nada."},{id:"name",label:"Tu nombre",value:s.name||"",hint:"Para saludarte arriba."},{id:"partner",label:"Con quién ahorras (opcional)",value:s.partner||"",hint:"Aparece en la pestaña Ahorro."},{id:"extraCats",label:"Tus categorías de gasto (opcional)",value:s.extraCats||"",hint:"Separadas por comas. Por ejemplo: Coche, Hijos, Documentos."},{id:"docUrl",label:"Enlace a un documento tuyo (opcional)",value:s.docUrl||""}],v=>save(()=>db.collection("settings").doc("main").set({...plainSettings(),...v}),"Guardado"),null,"Cómo cobras se cambia con su propio botón, en Mis datos.")}
   else if(a==="plan"){const s=setts();openForm("Tu plan",[{id:"extra",label:"Extra para las tarjetas al mes (€)",type:"money",value:s.extra??0},{id:"pauseUntil",label:"Pausar el extra hasta",type:"month",value:s.pauseUntil||"",hint:"Déjalo vacío para no pausar."}],v=>save(()=>db.collection("settings").doc("main").set({...plainSettings(),extra:v.extra||0,pauseUntil:v.pauseUntil||null}),"Plan actualizado"))}
   else if(a==="debt-extra"){const d=find("debts",id);openForm(`Pagar más a ${d.name}`,[{id:"amount",label:"Cuánto pagas además de la cuota (€)",type:"money",required:true},{id:"date",label:"Fecha",type:"date",value:iso(now()),required:true},{id:"pay",label:"Cómo lo pagaste",type:"select",value:"Transferencia",options:PAYS().filter(p=>!p.startsWith(d.name)).map(c=>[c,c])}],v=>{if(!(v.amount>0)){toast("Pon un importe mayor que 0");return}const nb=Math.max(0,Math.round(((d.balance||0)-v.amount)*100)/100);save(async()=>{await upd("debts",id,{balance:nb,history:[...(d.history||[]),{date:v.date,balance:nb,extra:v.amount}].slice(-60)});await db.collection("expenses").add({amount:v.amount,concept:`Pago extra ${d.name}`,cat:"Deudas",pay:v.pay,date:v.date})},`Hecho. Ahora debes ${eur(nb)}`)},null,`Ahora debes ${eur(d.balance||0)}. Se resta de la deuda y se apunta como gasto del mes.`)}
   else if(a==="debt-abono"){const d=find("debts",id);openForm(`Abonar a ${d.name}`,[{id:"amount",label:"Cuánto abonas (€)",type:"money",required:true},{id:"date",label:"Fecha",type:"date",value:iso(now()),required:true},{id:"pay",label:"Cómo lo pagaste",type:"select",value:"Transferencia",options:PAYS().filter(p=>!p.startsWith(d.name)).map(c=>[c,c])}],v=>{if(!(v.amount>0)){toast("Pon un importe mayor que 0");return}const amt=Math.min(v.amount,d.balance||0)||v.amount,nb=Math.max(0,Math.round(((d.balance||0)-amt)*100)/100);save(async()=>{await upd("debts",id,{balance:nb,history:[...(d.history||[]),{date:v.date,balance:nb,extra:amt}].slice(-60)});await db.collection("expenses").add({amount:amt,concept:`Abono a ${d.name}`,cat:"Deudas",pay:v.pay,date:v.date})},nb===0?"¡Deuda pagada!":`Abonado. Ahora debes ${eur(nb)}`)},null,`Ahora debes ${eur(d.balance||0)}. Se resta de la deuda y se apunta como gasto del mes.`)}
