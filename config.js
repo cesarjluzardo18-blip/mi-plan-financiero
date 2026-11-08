@@ -11,4 +11,4 @@ window.FIREBASE_CONFIG = {
 };
 
 // Clave pública para los avisos (Firebase → Cloud Messaging → Certificados push web).
-window.VAPID_KEY = "";
+window.VAPID_KEY = "BHcLlwjQWQh4MIwt_Qz0RsqHxLPm1fx7OuYIOmrSVmSO388T7vZMNPy84JXl_XltyBXTgW9hoMuAn63JJIykB9s";
