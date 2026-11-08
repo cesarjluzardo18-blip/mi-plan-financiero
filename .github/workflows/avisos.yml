@@ -1,0 +1,32 @@
+name: Avisos diarios
+
+on:
+  schedule:
+    - cron: "0 7 * * *"   # 07:00 UTC = 8:00 en invierno, 9:00 en verano (hora de Madrid)
+  workflow_dispatch:
+    inputs:
+      prueba:
+        description: "Enviar también un aviso de prueba"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  avisos:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Instalar
+        working-directory: scripts
+        run: npm install --no-audit --no-fund
+      - name: Enviar avisos
+        working-directory: scripts
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          PRUEBA: ${{ github.event.inputs.prueba == 'true' }}
+        run: node avisos.mjs

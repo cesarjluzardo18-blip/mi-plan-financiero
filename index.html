@@ -10,6 +10,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
 <script src="config.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600;700&display=swap">
@@ -485,6 +486,7 @@ function renderInicio(){
     <div class="head"><h2>Mis datos</h2><button class="btn tiny" data-act="settings">Editar</button></div>
     <div class="rows"><div class="row"><span class="grow">Ingreso previsto al mes</span><span class="amt">${eur(monthIncome())}</span></div><div class="row"><span class="grow">Cobros</span><span class="small" style="text-align:right">${payDesc()||"Sin indicar"}<br><button class="btn tiny" data-act="paymode" style="margin-top:6px">Cambiar cómo cobras</button></span></div><div class="row"><span class="grow">Dinero extra esperado</span><span class="amt">${st.rescue!=null?eur(st.rescue):"Sin indicar"}</span></div></div>
     ${/^https?:\/\//.test(st.docUrl||"")?`<p class="small"><a href="${esc(st.docUrl)}" target="_blank" rel="noopener">Abrir mi documento</a></p>`:""}
+    <div class="card stack"><div class="head"><strong>Avisos en este dispositivo</strong><span class="pill ${pushOn()?"good":"plain"}">${pushOn()?"Activados":"Desactivados"}</span></div><p class="small muted">Cada mañana te avisa de los cobros del día siguiente, del día en que cobras y de los plazos que se acercan.</p><div class="actions" style="justify-content:flex-start"><button class="btn tiny ${pushOn()?"":"primary"}" data-act="push">${pushOn()?"Volver a activar":"Activar avisos"}</button></div></div>
     <div class="card stack"><span class="small muted">Sesión iniciada como <strong>${esc(db&&db.email||"")}</strong></span><div class="actions" style="justify-content:flex-start"><button class="btn tiny" data-act="backup">Descargar copia de seguridad</button><button class="btn tiny" data-act="import">Importar copia</button><button class="btn tiny danger" data-act="logout">Cerrar sesión</button></div></div>
     <p class="small muted">La app no ve tu banco, así que los cobros y saldos los marcas tú.</p>
   </section>`;
@@ -620,7 +622,8 @@ const recFields=r=>[
 document.addEventListener("click",ev=>{
   const b=ev.target.closest("[data-act]");if(!b)return;
   const a=b.dataset.act,id=b.dataset.id;
-  if(a==="go-datos"){if(Q)clearQ();if(tab()!=="inicio"){location.hash="#inicio"}setTimeout(()=>{const el=$("#mis-datos");if(el)el.scrollIntoView({behavior:"smooth"})},60)}
+  if(a==="push"){enablePush()}
+  else if(a==="go-datos"){if(Q)clearQ();if(tab()!=="inicio"){location.hash="#inicio"}setTimeout(()=>{const el=$("#mis-datos");if(el)el.scrollIntoView({behavior:"smooth"})},60)}
   else if(a==="backup"){doBackup()}
   else if(a==="import"){$("#imp").value="";$("#imp").click()}
   else if(a==="logout"){if(confirm("¿Cerrar sesión en este dispositivo?"))auth.signOut()}
@@ -680,6 +683,31 @@ $("#q").addEventListener("input",e=>{Q=e.target.value;$("#q-x").hidden=!Q;render
 $("#q").addEventListener("keydown",e=>{if(e.key==="Escape")clearQ()});
 $("#q-x").addEventListener("click",()=>{clearQ();$("#q").focus()});
 document.querySelector("nav").addEventListener("click",()=>{if(Q)clearQ()});
+
+/* Avisos (notificaciones) */
+const lsGet=k=>{try{return localStorage.getItem(k)}catch(_){return null}};
+const lsSet=(k,v)=>{try{localStorage.setItem(k,v)}catch(_){}};
+const pushOn=()=>"Notification" in window&&Notification.permission==="granted"&&!!lsGet("pushToken");
+function info(title,text){const dlg=$("#dlg");dlg.innerHTML=`<form method="dialog" class="grid"><h2>${esc(title)}</h2><p>${esc(text)}</p><div class="actions"><button class="btn primary">Entendido</button></div></form>`;dlg.showModal()}
+async function enablePush(){
+  const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
+  const standalone=(window.matchMedia&&matchMedia("(display-mode: standalone)").matches)||navigator.standalone===true;
+  if(ios&&!standalone){info("Primero, añádela a tu pantalla de inicio","En iPhone los avisos solo funcionan si la app está en la pantalla de inicio. En Safari pulsa el botón Compartir (el cuadrado con la flecha) → «Añadir a pantalla de inicio». Luego ábrela desde ese icono, entra en Mis datos y vuelve a pulsar «Activar avisos».");return}
+  let sup=false;try{sup="Notification" in window&&"serviceWorker" in navigator&&!!firebase.messaging&&await Promise.resolve(firebase.messaging.isSupported())}catch(_){}
+  if(!sup){info("Este navegador no admite avisos","Prueba desde la app instalada en tu móvil, o con Chrome o Edge en el ordenador.");return}
+  if(!window.VAPID_KEY){info("Falta un paso de configuración","Los avisos aún no están conectados con Firebase (falta la clave de notificaciones).");return}
+  const perm=await Notification.requestPermission();
+  if(perm!=="granted"){info("No se dio permiso","Para activarlos: Ajustes del iPhone → Notificaciones → Mi Plan → Permitir notificaciones. Luego vuelve a pulsar «Activar avisos».");return}
+  save(async()=>{
+    const reg=await navigator.serviceWorker.register("sw.js");await navigator.serviceWorker.ready;
+    const token=await firebase.messaging().getToken({vapidKey:window.VAPID_KEY,serviceWorkerRegistration:reg});
+    if(!token)throw new Error("sin token");
+    const old=lsGet("pushToken");
+    await db.collection("tokens").doc(token).set({token,device:navigator.userAgent.slice(0,160),created:new Date().toISOString()});
+    if(old&&old!==token){try{await db.collection("tokens").doc(old).delete()}catch(_){}}
+    lsSet("pushToken",token);render();
+  },"Avisos activados en este dispositivo");
+}
 
 /* Copias de seguridad */
 function doBackup(){

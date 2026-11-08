@@ -9,3 +9,6 @@ window.FIREBASE_CONFIG = {
   messagingSenderId: "898856341229",
   appId: "1:898856341229:web:d2ade17a4d5b921ca546e4"
 };
+
+// Clave pública para los avisos (Firebase → Cloud Messaging → Certificados push web).
+window.VAPID_KEY = "";
