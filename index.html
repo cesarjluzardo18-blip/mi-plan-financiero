@@ -133,6 +133,9 @@ mark{background:color-mix(in srgb,var(--accent) 24%,transparent);color:inherit;b
 .quick{display:flex;flex-wrap:wrap;gap:8px}
 .quick .btn{background:var(--soft);border-color:transparent}
 @media (prefers-reduced-motion:no-preference){.meter>i{transition:width .3s}}
+.thumbwrap{display:grid;place-items:center;background:var(--surface-2);border-radius:8px;min-height:120px;overflow:hidden}
+.thumbwrap img{max-width:100%;max-height:60vh;display:block}
+.photo-full{width:100%;height:auto;border-radius:8px;display:block;touch-action:pinch-zoom}
 #login{position:fixed;inset:0;z-index:30;background:var(--bg);overflow:auto;display:grid;place-items:center;padding:24px max(16px,env(safe-area-inset-left,0px))}
 #login .box{width:min(400px,100%);display:grid;gap:16px}
 #login .brand{font:700 1.6rem var(--display)}
@@ -152,6 +155,7 @@ input[type=email],input[type=password]{width:100%;min-width:0;padding:10px;borde
 
   <main id="v-gastos" class="view" hidden>
     <section class="section">
+      <button type="button" class="btn" data-act="go-zoe" id="zoe-btn" style="justify-self:start">📎 Gastos con factura</button>
       <h2>Añadir un gasto</h2>
       <div class="stack" style="gap:6px"><span class="label">Gasto rápido, se guarda con fecha de hoy</span><div id="quick" class="quick"></div></div>
       <form id="exp-form" class="card grid">
@@ -171,6 +175,7 @@ input[type=email],input[type=password]{width:100%;min-width:0;padding:10px;borde
   <main id="v-deudas" class="view" hidden></main>
   <main id="v-proximos" class="view" hidden></main>
   <main id="v-ahorro" class="view" hidden></main>
+  <main id="v-zoe" class="view" hidden></main>
 </div>
 
 <nav aria-label="Secciones">
@@ -518,6 +523,7 @@ function quickList(){
   return out.slice(0,6);
 }
 function renderGastos(){
+  zoeBtn();
   const sel=$("#e-cat"),cur=sel.value,cats=[...budgets().map(b=>b.name),...extraCats()];
   sel.innerHTML=cats.map(c=>`<option>${esc(c)}</option>`).join("");if(cats.includes(cur))sel.value=cur;
   $("#e-place-l").innerHTML=PLACES().map(c=>`<option value="${esc(c)}"></option>`).join("");
@@ -531,7 +537,7 @@ function renderGastos(){
     <div class="card stack">${budgets().map(b=>{const s=M.spent(b.name),p=b.amount?Math.min(100,s/b.amount*100):0,o=s>b.amount;return`<div class="stack" style="gap:4px"><div class="head"><span>${esc(b.name)}</span><span class="small ${o?"":"muted"}" ${o?'style="color:var(--bad);font-weight:700"':""}>${eur(s)} de ${eur(b.amount)}</span></div><div class="meter ${o?"over":""}"><i style="width:${p}%"></i></div></div>`}).join("")}
     <p class="small muted">Lo que anotes en categorías que no son presupuesto (${esc(extraCats().join(", "))}) resta de tu dinero libre.</p></div></section>
   <section class="section"><h2>Gastos de este mes</h2>
-    <div class="rows">${list.map(e=>`<button class="row" data-act="exp-edit" data-id="${esc(e.id)}"><div class="grow"><strong>${esc(e.concept)}</strong><div class="small muted">${esc(dShort(parseISO(e.date)))}${e.place?` · ${esc(e.place)}`:""} · ${esc(e.cat)}</div></div><span class="${e.pay?"pay "+payCls(e.pay):"pill warn"}">${esc(e.pay||"Sin forma de pago")}</span><span class="amt">${eur(e.amount)}</span></button>`).join("")||'<div class="row muted">Todavía no hay gastos este mes. Añade el primero con el formulario de arriba.</div>'}</div></section>`;
+    <div class="rows">${list.map(e=>`<button class="row" data-act="${e.receipt?"zoe-open":"exp-edit"}" data-id="${esc(e.id)}"><div class="grow"><strong>${esc(e.concept)}${e.receipt?" 📎":""}</strong><div class="small muted">${esc(dShort(parseISO(e.date)))}${e.place?` · ${esc(e.place)}`:""} · ${esc(e.cat)}</div></div><span class="${e.pay?"pay "+payCls(e.pay):"pill warn"}">${esc(e.pay||"Sin forma de pago")}</span><span class="amt">${eur(e.amount)}</span></button>`).join("")||'<div class="row muted">Todavía no hay gastos este mes. Añade el primero con el formulario de arriba.</div>'}</div></section>`;
 }
 function renderCobros(){
   const m=ym(now()),today=now().getDate(),cob=active().filter(r=>r.type==="cobro"),dated=cob.filter(r=>r.day).sort((a,b)=>a.day-b.day||a.name.localeCompare(b.name)),undated=cob.filter(r=>!r.day);
@@ -590,7 +596,7 @@ function renderAhorro(){
   <section class="section"><h2>Movimientos</h2><div class="rows">${list.map(x=>`<button class="row" data-act="sav-edit" data-id="${esc(x.id)}"><div class="grow"><strong>${x.amount<0?"Sacado":"Añadido"} · ${x.who==="Yo"?"Tú":esc(x.who)}</strong><div class="small muted">${esc(dShort(parseISO(x.date)))}${x.note?" · "+esc(x.note):""}</div></div><span class="amt">${eur(x.amount)}</span></button>`).join("")||'<div class="row muted">Todavía no hay movimientos. Pulsa Añadir dinero para anotar el primero.</div>'}</div></section>
   <p class="small muted">Lo que apartas tú este mes se resta de tu dinero libre. ${partner()?`Lo que aporta ${esc(partner())} solo suma al ahorro.`:""} Este efectivo no está en el banco, así que anótalo aquí cada vez que lo guardes o lo saques.</p>`;
 }
-function tab(){const h=(location.hash||"").slice(1);return["inicio","gastos","cobros","deudas","proximos","ahorro"].includes(h)?h:"inicio"}
+function tab(){const h=(location.hash||"").slice(1);return["inicio","gastos","cobros","deudas","proximos","ahorro","zoe"].includes(h)?h:"inicio"}
 function render(){
   const ready=COLS.every(c=>loaded[c]);
   $("#today").textContent=dLong(now());
@@ -599,11 +605,11 @@ function render(){
   if(!S.settings.length&&!S.recurring.length){$("#status").hidden=false;$("#status").innerHTML='Todavía no hay datos en tu cuenta. Si tienes una copia de seguridad, impórtala para empezar con tus datos. <span style="display:block;margin-top:10px"><button class="btn primary" data-act="import">Importar copia</button> <button class="btn" data-act="start-empty">Empezar desde cero</button></span>';return}
   $("#status").hidden=true;
   const qa=!!Q.trim();$("#q-out").hidden=!qa;
-  if(qa){["inicio","gastos","cobros","deudas","proximos","ahorro"].forEach(x=>$("#v-"+x).hidden=true);renderSearch();return}
+  if(qa){["inicio","gastos","cobros","deudas","proximos","ahorro","zoe"].forEach(x=>$("#v-"+x).hidden=true);renderSearch();return}
   const t=tab();
-  ["inicio","gastos","cobros","deudas","proximos","ahorro"].forEach(x=>$("#v-"+x).hidden=x!==t);
-  document.querySelectorAll("nav a").forEach(a=>{const on=a.dataset.tab===t;a.classList.toggle("on",on);if(on)a.setAttribute("aria-current","page");else a.removeAttribute("aria-current")});
-  ({inicio:renderInicio,gastos:renderGastos,cobros:renderCobros,deudas:renderDeudas,proximos:renderProximos,ahorro:renderAhorro})[t]();
+  ["inicio","gastos","cobros","deudas","proximos","ahorro","zoe"].forEach(x=>$("#v-"+x).hidden=x!==t);
+  document.querySelectorAll("nav a").forEach(a=>{const on=a.dataset.tab===(t==="zoe"?"gastos":t);a.classList.toggle("on",on);if(on)a.setAttribute("aria-current","page");else a.removeAttribute("aria-current")});
+  ({inicio:renderInicio,gastos:renderGastos,cobros:renderCobros,deudas:renderDeudas,proximos:renderProximos,ahorro:renderAhorro,zoe:renderZoe})[t]();
 }
 window.addEventListener("hashchange",()=>{if(Q){Q="";$("#q").value="";$("#q-x").hidden=true}render();window.scrollTo(0,0)});
 
@@ -623,6 +629,11 @@ document.addEventListener("click",ev=>{
   const b=ev.target.closest("[data-act]");if(!b)return;
   const a=b.dataset.act,id=b.dataset.id;
   if(a==="push"){enablePush()}
+  else if(a==="go-zoe"){location.hash="#zoe"}
+  else if(a==="zoe-new"){zoeForm()}
+  else if(a==="zoe-open"){zoeOpen(id)}
+  else if(a==="zoe-cat"){const v=$("#zoe-cat-sel").value;if(v)save(()=>db.collection("settings").doc("main").set({...plainSettings(),photoCat:v}),"Listo")}
+  else if(a==="zoe-change"){zoeChangeCat()}
   else if(a==="go-datos"){if(Q)clearQ();if(tab()!=="inicio"){location.hash="#inicio"}setTimeout(()=>{const el=$("#mis-datos");if(el)el.scrollIntoView({behavior:"smooth"})},60)}
   else if(a==="backup"){doBackup()}
   else if(a==="import"){$("#imp").value="";$("#imp").click()}
@@ -635,9 +646,9 @@ document.addEventListener("click",ev=>{
     else openForm(`Pagado: ${r.name}`,[{id:"date",label:"¿Qué día lo pagaste?",type:"date",value:iso(now()),required:true}],v=>{const dd=v.date||iso(now()),mm=dd.slice(0,7);p.add(mm);po[mm]=dd;save(()=>upd("recurring",id,{paid:[...p].slice(-24),paidOn:po}),"Marcado como pagado")},null,r.day?`Se cobra normalmente el día ${r.day}. Pon el día real en que lo pagaste.`:"Pon el día real en que lo pagaste.")}
   else if(a==="rec-cancel"){save(()=>upd("recurring",id,{active:false}),"Cancelado. Ya no cuenta en tus gastos.")}
   else if(a==="rec-new"){openForm("Añadir cobro",recFields({}),v=>save(()=>db.collection("recurring").add({...v,paid:[]}),"Guardado"))}
-  else if(a==="rec-edit"){const r=find("recurring",id);openForm("Editar",recFields(r),v=>save(async()=>{await upd("recurring",id,v);if(r.name&&v.name&&v.name!==r.name){const mv=S.expenses.filter(e=>e.cat===r.name);for(const e of mv)await upd("expenses",e.id,{cat:v.name})}},"Guardado"),()=>save(()=>db.collection("recurring").doc(id).delete(),"Eliminado"))}
+  else if(a==="rec-edit"){const r=find("recurring",id);openForm("Editar",recFields(r),v=>save(async()=>{await upd("recurring",id,v);if(r.name&&v.name&&v.name!==r.name){const mv=S.expenses.filter(e=>e.cat===r.name);for(const e of mv)await upd("expenses",e.id,{cat:v.name});if(setts().photoCat===r.name)await db.collection("settings").doc("main").set({...plainSettings(),photoCat:v.name})}},"Guardado"),()=>save(()=>db.collection("recurring").doc(id).delete(),"Eliminado"))}
   else if(a==="exp-edit"){const e=find("expenses",id),cats=[...new Set([...budgets().map(x=>x.name),...extraCats(),e.cat])];
-    openForm("Editar gasto",[{id:"amount",label:"Importe (€)",type:"money",value:e.amount,required:true},{id:"concept",label:"Qué compraste",value:e.concept,required:true},{id:"place",label:"Dónde lo compraste",value:e.place||"",list:PLACES()},{id:"date",label:"Fecha",type:"date",value:e.date,required:true},{id:"cat",label:"Categoría",type:"select",value:e.cat,options:cats.map(c=>[c,c])},{id:"pay",label:"Cómo pagaste",type:"select",value:e.pay||"",options:[["","Sin indicar"],...[...new Set([...PAYS(),e.pay].filter(Boolean))].map(c=>[c,c])]}],v=>save(()=>upd("expenses",id,v),"Guardado"),()=>save(()=>db.collection("expenses").doc(id).delete(),"Eliminado"))}
+    openForm("Editar gasto",[{id:"amount",label:"Importe (€)",type:"money",value:e.amount,required:true},{id:"concept",label:"Qué compraste",value:e.concept,required:true},{id:"place",label:"Dónde lo compraste",value:e.place||"",list:PLACES()},{id:"date",label:"Fecha",type:"date",value:e.date,required:true},{id:"cat",label:"Categoría",type:"select",value:e.cat,options:cats.map(c=>[c,c])},{id:"pay",label:"Cómo pagaste",type:"select",value:e.pay||"",options:[["","Sin indicar"],...[...new Set([...PAYS(),e.pay].filter(Boolean))].map(c=>[c,c])]}],v=>save(()=>upd("expenses",id,v),"Guardado"),()=>save(async()=>{await db.collection("expenses").doc(id).delete();if(e.receipt)await db.collection("receipts").doc(id).delete()},"Eliminado"))}
   else if(a==="paymode"){openPay()}
   else if(a==="settings"){const s=setts();openForm("Mis datos",[{id:"rescue",label:"Dinero extra esperado (€)",type:"money",value:s.rescue??"",hint:"Una devolución, una ayuda… Déjalo vacío si no esperas nada."},{id:"name",label:"Tu nombre",value:s.name||"",hint:"Para saludarte arriba."},{id:"partner",label:"Con quién ahorras (opcional)",value:s.partner||"",hint:"Aparece en la pestaña Ahorro."},{id:"extraCats",label:"Tus categorías de gasto (opcional)",value:s.extraCats||"",hint:"Separadas por comas. Por ejemplo: Coche, Hijos, Documentos."},{id:"docUrl",label:"Enlace a un documento tuyo (opcional)",value:s.docUrl||""}],v=>save(()=>db.collection("settings").doc("main").set({...plainSettings(),...v}),"Guardado"),null,"Cómo cobras se cambia con su propio botón, en Mis datos.")}
   else if(a==="plan"){const s=setts();openForm("Tu plan",[{id:"extra",label:"Extra para las tarjetas al mes (€)",type:"money",value:s.extra??0},{id:"pauseUntil",label:"Pausar el extra hasta",type:"month",value:s.pauseUntil||"",hint:"Déjalo vacío para no pausar."}],v=>save(()=>db.collection("settings").doc("main").set({...plainSettings(),extra:v.extra||0,pauseUntil:v.pauseUntil||null}),"Plan actualizado"))}
@@ -683,6 +694,96 @@ $("#q").addEventListener("input",e=>{Q=e.target.value;$("#q-x").hidden=!Q;render
 $("#q").addEventListener("keydown",e=>{if(e.key==="Escape")clearQ()});
 $("#q-x").addEventListener("click",()=>{clearQ();$("#q").focus()});
 document.querySelector("nav").addEventListener("click",()=>{if(Q)clearQ()});
+
+/* Gastos con factura (fotos) */
+const photoCat=()=>String(setts().photoCat||"");
+const capFirst=t=>t?t[0].toUpperCase()+t.slice(1):t;
+const zoeTitle=()=>photoCat()?capFirst(photoCat()):"Gastos con factura";
+function compressImage(file){
+  return new Promise((res,rej)=>{
+    const url=URL.createObjectURL(file),img=new Image();
+    img.onload=()=>{
+      let max=1400,q=.72,out="";
+      for(let k=0;k<6;k++){
+        const sc=Math.min(1,max/Math.max(img.naturalWidth,img.naturalHeight)),w=Math.round(img.naturalWidth*sc),h=Math.round(img.naturalHeight*sc);
+        const cv=document.createElement("canvas");cv.width=w;cv.height=h;const cx=cv.getContext("2d");cx.fillStyle="#fff";cx.fillRect(0,0,w,h);cx.drawImage(img,0,0,w,h);
+        out=cv.toDataURL("image/jpeg",q);if(out.length<850000)break;max=Math.round(max*.8);q=Math.max(.5,q-.06);
+      }
+      URL.revokeObjectURL(url);out.length<1000000?res(out):rej(new Error("grande"));
+    };
+    img.onerror=()=>{URL.revokeObjectURL(url);rej(new Error("formato"))};
+    img.src=url;
+  });
+}
+function renderZoe(){
+  const cat=photoCat(),el=$("#v-zoe");
+  if(!cat){
+    const opts=[...new Set([...budgets().map(b=>b.name),...extraCats()])];
+    el.innerHTML=`<section class="section"><a class="small" href="#gastos">← Volver a Gastos</a><h2>Gastos con factura</h2><div class="card stack"><p>Elige la categoría de gastos en la que quieres guardar las fotos de las facturas.</p><label class="f" for="zoe-cat-sel">Categoría<select id="zoe-cat-sel">${opts.map(o=>`<option>${esc(o)}</option>`).join("")}</select></label><button class="btn primary" data-act="zoe-cat">Usar esta categoría</button></div></section>`;return;
+  }
+  const all=S.expenses.filter(e=>e.cat===cat).sort((a,b)=>(b.date||"").localeCompare(a.date||"")),m=ym(now());
+  const b=budgets().find(x=>x.name===cat),spent=all.filter(e=>(e.date||"").startsWith(m)).reduce((a,e)=>a+(e.amount||0),0);
+  const byM={};all.forEach(e=>{const k=(e.date||"").slice(0,7);(byM[k]=byM[k]||[]).push(e)});
+  const months=Object.keys(byM).sort().reverse();
+  const meter=b?`<div class="stack" style="gap:4px"><div class="head"><span>${eur(spent)} de ${eur(b.amount)}</span><span class="small ${spent>b.amount?"":"muted"}" ${spent>b.amount?'style="color:var(--bad);font-weight:700"':""}>${spent>b.amount?"Te has pasado "+eur(spent-b.amount):"Te quedan "+eur(b.amount-spent)}</span></div><div class="meter ${spent>b.amount?"over":""}"><i style="width:${b.amount?Math.min(100,spent/b.amount*100):0}%"></i></div></div>`:`<div class="head"><span>Este mes</span><span class="amt">${eur(spent)}</span></div>`;
+  el.innerHTML=`<section class="section"><a class="small" href="#gastos">← Volver a Gastos</a>
+    <div class="head"><h2>${esc(zoeTitle())}</h2><button class="btn primary" data-act="zoe-new">+ Añadir gasto</button></div>
+    <div class="card stack">${meter}<p class="small muted">${all.filter(e=>e.receipt).length} de ${all.length} gastos con factura. Toca un gasto para ver su foto.</p></div></section>
+  <section class="section">${months.map(k=>`<div class="head"><h3>${esc(capFirst(mLong(parseISO(k+"-01"))))}</h3><span class="amt">${eur(byM[k].reduce((a,e)=>a+(e.amount||0),0))}</span></div><div class="rows">${byM[k].map(e=>`<button class="row" data-act="zoe-open" data-id="${esc(e.id)}"><div class="grow"><strong>${esc(e.concept)}</strong><div class="small muted">${esc(dShort(parseISO(e.date)))}${e.place?` · ${esc(e.place)}`:""}</div></div>${e.receipt?'<span class="pill good">📎 Factura</span>':'<span class="pill plain">Sin foto</span>'}<span class="amt">${eur(e.amount)}</span></button>`).join("")}</div>`).join("")||'<div class="card muted">Aún no hay gastos aquí. Pulsa «+ Añadir gasto» y sube la foto de la factura.</div>'}
+    <p class="small muted"><button class="linkbtn" data-act="zoe-change">Cambiar la categoría de este apartado</button></p></section>`;
+}
+function zoeChangeCat(){
+  const opts=[...new Set([...budgets().map(b=>b.name),...extraCats()])];
+  openForm("Categoría del apartado",[{id:"photoCat",label:"Categoría",type:"select",value:photoCat(),options:opts.map(o=>[o,o])}],v=>save(()=>db.collection("settings").doc("main").set({...plainSettings(),photoCat:v.photoCat}),"Guardado"));
+}
+function zoeForm(e){
+  const dlg=$("#dlg"),ed=!!e;e=e||{date:iso(now())};let photo=null;
+  dlg.innerHTML=`<form method="dialog" id="zf" class="grid"><h2>${ed?"Editar gasto":"Añadir gasto"}</h2><div class="fields">
+    <div class="two"><label class="f" for="z-amt">Importe (€)<input id="z-amt" type="text" inputmode="decimal" required value="${e.amount!=null?esc(String(e.amount).replace(".",",")):""}"></label><label class="f" for="z-date">Fecha<input id="z-date" type="date" required value="${esc(e.date)}"></label></div>
+    <label class="f" for="z-con">Qué compraste<input id="z-con" type="text" required maxlength="80" placeholder="Pañales, ropa…" value="${esc(e.concept||"")}"></label>
+    <label class="f" for="z-place">Dónde lo compraste<input id="z-place" type="text" maxlength="60" list="z-pl" value="${esc(e.place||"")}"><datalist id="z-pl">${PLACES().map(c=>`<option value="${esc(c)}"></option>`).join("")}</datalist></label>
+    <label class="f" for="z-pay">Cómo pagaste<select id="z-pay"><option value="">Sin indicar</option>${[...new Set([...PAYS(),e.pay].filter(Boolean))].map(c=>`<option ${c===e.pay?"selected":""}>${esc(c)}</option>`).join("")}</select></label>
+    ${ed?"":`<label class="f" for="z-file">Foto de la factura<input id="z-file" type="file" accept="image/*"><span class="hint">Puedes hacer la foto ahora o elegirla de tu galería.</span></label><div class="thumbwrap" id="z-prev" hidden></div>`}
+    </div><p id="z-msg" class="small" style="color:var(--bad)" hidden></p><div class="actions"><button type="button" class="btn" id="z-x">Cancelar</button><button type="submit" class="btn primary" id="z-go">Guardar</button></div></form>`;
+  $("#z-x").onclick=()=>dlg.close();
+  const f=$("#z-file");
+  if(f)f.onchange=async()=>{const file=f.files[0];if(!file)return;const pv=$("#z-prev"),m=$("#z-msg");m.hidden=true;pv.hidden=false;pv.innerHTML='<span class="small muted">Preparando la foto…</span>';
+    try{photo=await compressImage(file);pv.innerHTML=`<img src="${photo}" alt="Factura">`}catch(err){photo=null;pv.hidden=true;m.textContent="No se pudo leer esa foto. Prueba con otra o hazla de nuevo.";m.hidden=false}};
+  $("#zf").onsubmit=ev=>{
+    ev.preventDefault();const n=num($("#z-amt").value);
+    if(n==null||n<=0){const a=$("#z-amt");a.setCustomValidity("Escribe un importe, por ejemplo 12,50");a.reportValidity();a.oninput=()=>a.setCustomValidity("");return}
+    const data={amount:n,concept:$("#z-con").value.trim(),place:$("#z-place").value.trim(),date:$("#z-date").value,cat:photoCat(),pay:$("#z-pay").value};
+    dlg.close();
+    if(ed){save(()=>upd("expenses",e.id,{amount:data.amount,concept:data.concept,place:data.place,date:data.date,pay:data.pay}),"Guardado");return}
+    save(async()=>{const ref=db.collection("expenses").doc();if(photo){await db.collection("receipts").doc(ref.id).set({img:photo,created:new Date().toISOString()});data.receipt=true}await ref.set(data)},photo?"Gasto y factura guardados":"Gasto guardado");
+  };
+  dlg.showModal();
+}
+async function zoeOpen(id){
+  const e=find("expenses",id);if(!e)return;const dlg=$("#dlg");
+  dlg.innerHTML=`<div class="grid"><div class="head"><h2>${esc(e.concept)}</h2><span class="amt">${eur(e.amount)}</span></div>
+    <p class="small muted">${esc(dLong(parseISO(e.date)))}${e.place?` · ${esc(e.place)}`:""}${e.pay?` · ${esc(e.pay)}`:""}</p>
+    <div class="thumbwrap" id="zo-img">${e.receipt?'<span class="small muted">Cargando la factura…</span>':'<span class="small muted">Este gasto no tiene foto.</span>'}</div>
+    <label class="btn" for="zo-file" style="text-align:center">${e.receipt?"Cambiar foto":"📷 Añadir foto de la factura"}<input id="zo-file" type="file" accept="image/*" hidden></label>
+    <div class="actions">${e.receipt?'<button type="button" class="btn danger left" id="zo-del">Quitar foto</button><button type="button" class="btn" id="zo-share">Compartir o guardar</button>':""}<button type="button" class="btn" id="zo-edit">Editar datos</button><button type="button" class="btn primary" id="zo-x">Cerrar</button></div></div>`;
+  dlg.showModal();
+  $("#zo-x").onclick=()=>dlg.close();
+  $("#zo-edit").onclick=()=>{dlg.close();setTimeout(()=>{const ex=find("expenses",id);if(ex.cat===photoCat())zoeForm(ex);else document.querySelector(`[data-act="exp-edit"][data-id="${CSS.escape(id)}"]`)?.click()},50)};
+  $("#zo-file").onchange=async ev=>{const file=ev.target.files[0];if(!file)return;const box=$("#zo-img");box.innerHTML='<span class="small muted">Preparando la foto…</span>';
+    try{const img=await compressImage(file);await db.collection("receipts").doc(id).set({img,created:new Date().toISOString()});await upd("expenses",id,{receipt:true});box.innerHTML=`<img class="photo-full" src="${img}" alt="Factura">`;toast("Factura guardada")}
+    catch(err){box.innerHTML='<span class="small" style="color:var(--bad)">No se pudo guardar esa foto. Prueba con otra.</span>'}};
+  if(!e.receipt)return;
+  let img="";
+  try{const d=await db.collection("receipts").doc(id).get();img=d.exists?d.data().img:""}catch(_){}
+  const box=$("#zo-img");if(!box)return;
+  box.innerHTML=img?`<a href="${img}" target="_blank" rel="noopener"><img class="photo-full" src="${img}" alt="Factura de ${esc(e.concept)}"></a>`:'<span class="small" style="color:var(--bad)">No se pudo cargar la foto. Revisa tu conexión.</span>';
+  const sh=$("#zo-share");if(sh)sh.onclick=async()=>{if(!img)return;const name=`factura-${e.date}-${(e.concept||"gasto").replace(/[^\wáéíóúñ-]+/gi,"-").slice(0,30)}.jpg`;
+    try{const blob=await (await fetch(img)).blob(),file=new File([blob],name,{type:"image/jpeg"});
+      if(navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file],title:e.concept});return}
+      const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1000)}catch(_){}};
+  const del=$("#zo-del");if(del)del.onclick=()=>{if(del.dataset.sure){dlg.close();save(async()=>{await db.collection("receipts").doc(id).delete();await upd("expenses",id,{receipt:false})},"Foto quitada")}else{del.dataset.sure="1";del.textContent="Confirmar: quitar"}};
+}
+function zoeBtn(){const b=$("#zoe-btn");if(b)b.textContent="📎 "+zoeTitle()}
 
 /* Avisos (notificaciones) */
 const lsGet=k=>{try{return localStorage.getItem(k)}catch(_){return null}};
