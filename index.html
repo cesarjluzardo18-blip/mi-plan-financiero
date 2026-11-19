@@ -1,6 +1,6 @@
 <!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <title>Mi Plan Financiero</title>
-<meta name="build" content="202611191923">
+<meta name="build" content="202611191937">
 <meta name="theme-color" content="#1F4E8C">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon-192.png">
@@ -181,6 +181,34 @@ mark{background:color-mix(in srgb,var(--accent) 24%,transparent);color:inherit;b
 .mini{display:grid;gap:2px}.mini span{font-size:.75rem;color:var(--muted)}.mini b{font:700 1.25rem var(--display)}
 @media (min-width:960px){#v-panel{grid-template-columns:repeat(2,minmax(0,1fr))}#v-panel>.phero{grid-column:1/-1}}
 #upd{position:fixed;left:50%;transform:translateX(-50%);top:calc(12px + env(safe-area-inset-top,0px));z-index:40;display:flex;gap:12px;align-items:center;background:var(--ink);color:var(--bg);padding:10px 12px 10px 16px;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.25);font-weight:600;font-size:.9375rem;max-width:calc(100vw - 32px)}
+
+/* ===== Modo ordenador (pantallas anchas) ===== */
+nav .ni,nav .brand,#sect{display:none}
+@media (min-width:960px){
+  body{--side:248px}
+  nav{top:0;bottom:0;right:auto;width:var(--side);flex-direction:column;justify-content:flex-start;gap:4px;padding:22px 14px;border-top:0;border-right:1px solid var(--line);background:var(--surface)}
+  nav .brand{display:flex;align-items:center;gap:12px;padding:4px 10px 22px;font:700 1.02rem/1.15 var(--display);color:var(--ink)}
+  nav .brand .logo{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;background:linear-gradient(140deg,#0B1F3A,#1F4E8C);color:#fff;font:700 1.15rem var(--display)}
+  nav a{flex:0 0 auto;max-width:none;display:flex;align-items:center;gap:12px;text-align:left;padding:11px 12px;border-top:0;border-radius:10px;font-size:.9375rem;letter-spacing:0;color:var(--muted)}
+  nav a:hover{background:var(--surface-2);color:var(--ink)}
+  nav a.on{background:var(--soft);color:var(--accent);border-top:0}
+  nav .ni{display:block;width:20px;height:20px;flex:0 0 20px}
+  .wrap{margin-left:var(--side);max-width:none;padding:28px 40px 48px;gap:22px}
+  @media (min-width:1500px){.wrap{padding-left:max(40px,calc((100vw - var(--side) - 1240px)/2));padding-right:max(40px,calc((100vw - var(--side) - 1240px)/2))}}
+  .top{align-items:center}
+  .top h1{font-size:1.6rem}
+  .t-app{display:none}#sect{display:inline}
+  #toast{left:calc(50% + var(--side)/2);bottom:28px}
+  #upd{left:calc(50% + var(--side)/2)}
+  /* Inicio en dos columnas */
+  #v-inicio{grid-template-columns:minmax(0,7fr) minmax(0,5fr);gap:24px 28px;align-items:start}
+  #v-inicio>.full{grid-column:1/-1}
+  #v-inicio>.col{display:grid;gap:24px;align-content:start;min-width:0}
+  /* Panel: tarjetas a la misma altura */
+  #v-panel{gap:24px 28px;align-items:stretch}
+  .phero .num{font-size:3rem}
+}
+@media (max-width:959.98px){#v-inicio>.col{display:contents}}
 #login{position:fixed;inset:0;z-index:30;background:var(--bg);overflow:auto;display:grid;place-items:center;padding:24px max(16px,env(safe-area-inset-left,0px))}
 #login .box{width:min(400px,100%);display:grid;gap:16px}
 #login .brand{font:700 1.6rem var(--display)}
@@ -191,7 +219,7 @@ input[type=email],input[type=password]{width:100%;min-width:0;padding:10px;borde
 </style>
 
 <div class="wrap">
-  <header class="top"><div><div class="small" style="color:var(--accent);font-weight:600;letter-spacing:.04em" id="hello">Hola</div><h1>Mi Plan Financiero</h1></div><div style="display:flex;align-items:center;gap:10px"><span class="muted small" id="today"></span><button type="button" class="btn tiny" data-act="go-datos">⚙ Mis datos</button></div></header>
+  <header class="top"><div><div class="small" style="color:var(--accent);font-weight:600;letter-spacing:.04em" id="hello">Hola</div><h1><span class="t-app">Mi Plan Financiero</span><span id="sect"></span></h1></div><div style="display:flex;align-items:center;gap:10px"><span class="muted small" id="today"></span><button type="button" class="btn tiny" data-act="go-datos">⚙ Mis datos</button></div></header>
   <div class="search" role="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.6-3.6"></path></svg><input id="q" type="search" placeholder="Buscar gastos, cobros, deudas, importes…" autocomplete="off" enterkeyhint="search" aria-label="Buscar"><button type="button" id="q-x" class="qx" hidden aria-label="Borrar la búsqueda"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg></button></div>
   <div id="q-out" class="qout" hidden></div>
   <p id="status" class="card">Cargando tus cuentas. Aquí verás tus próximos cobros, tus gastos y tus deudas.</p>
@@ -225,13 +253,14 @@ input[type=email],input[type=password]{width:100%;min-width:0;padding:10px;borde
 </div>
 
 <nav aria-label="Secciones">
-  <a href="#inicio" data-tab="inicio">Inicio</a>
-  <a href="#panel" data-tab="panel">Panel</a>
-  <a href="#gastos" data-tab="gastos">Gastos</a>
-  <a href="#cobros" data-tab="cobros">Cobros</a>
-  <a href="#deudas" data-tab="deudas">Deudas</a>
-  <a href="#proximos" data-tab="proximos">Próximos</a>
-  <a href="#ahorro" data-tab="ahorro">Ahorro</a>
+  <div class="brand"><span class="logo">€</span><span>Mi Plan<br>Financiero</span></div>
+  <a href="#inicio" data-tab="inicio"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg><span>Inicio</span></a>
+  <a href="#panel" data-tab="panel"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M22 20H2"/></svg><span>Panel</span></a>
+  <a href="#gastos" data-tab="gastos"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/><path d="M7 15h4"/></svg><span>Gastos</span></a>
+  <a href="#cobros" data-tab="cobros"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg><span>Cobros</span></a>
+  <a href="#deudas" data-tab="deudas"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/><path d="M6 15h2"/></svg><span>Deudas</span></a>
+  <a href="#proximos" data-tab="proximos"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span>Próximos</span></a>
+  <a href="#ahorro" data-tab="ahorro"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 9c1 0 2 1 2 2v2h-2a7 7 0 0 1-3 4v3h-3v-2h-3v2H7v-3a7 7 0 0 1 1-12c2-1 6-1 8 1"/><circle cx="15" cy="11" r=".8" fill="currentColor"/></svg><span>Ahorro</span></a>
 </nav>
 <section id="login" hidden>
   <div class="box">
@@ -505,16 +534,10 @@ function renderInicio(){
   const cards=S.debts.filter(d=>d.kind==="card"),avail=cards.reduce((a,d)=>a+(d.limit?Math.max(0,d.limit-(d.balance||0)):0),0),hasLim=cards.some(d=>d.limit),bal=cards.reduce((a,d)=>a+(d.balance||0),0),ini=cards.reduce((a,d)=>a+(d.initial||0),0);
   const sim=simulate(st.extra,st.pauseUntil);
   $("#v-inicio").innerHTML=`
-  ${alerts.length?`<section class="stack" aria-label="Avisos">${alerts.map(a=>`<div class="alert ${a.cls}"><div class="grow"><strong>${esc(a.title)}</strong><div class="small">${esc(a.sub)}</div></div>${a.act}</div>`).join("")}</section>`:""}
-  ${balanceCard({label:"Te queda ahora, "+dShort(t),big:eur(Math.round(L.now*100)/100),neg:L.now<0,tri:[["Ingresado",eur(L.inc,true)],["Gastado",eur(L.paid+L.exp,true)],["A fin de mes",eur(Math.round(L.end),true),L.end<0?"#FFB4A9":"#8FE3B5"]],foot:`Pendiente de pagar este mes: <strong>${eur(L.pendSum+L.budLeft,true)}</strong>`})}
-  ${ringsHtml(true)}
-  ${renderLedger(L)}
-  <div class="card small">${cashTxt}</div>
-  ${renderCierre()}
-  ${renderTareas()}
-  ${renderIngresos(M)}
-  ${renderColchon()}
-  <section class="section" id="mis-datos" style="scroll-margin-top:16px">
+  ${alerts.length?`<section class="stack full" aria-label="Avisos">${alerts.map(a=>`<div class="alert ${a.cls}"><div class="grow"><strong>${esc(a.title)}</strong><div class="small">${esc(a.sub)}</div></div>${a.act}</div>`).join("")}</section>`:""}
+  <div class="col"><div class="cell" style="order:1;display:grid;gap:20px;min-width:0">${balanceCard({label:"Te queda ahora, "+dShort(t),big:eur(Math.round(L.now*100)/100),neg:L.now<0,tri:[["Ingresado",eur(L.inc,true)],["Gastado",eur(L.paid+L.exp,true)],["A fin de mes",eur(Math.round(L.end),true),L.end<0?"#FFB4A9":"#8FE3B5"]],foot:`Pendiente de pagar este mes: <strong>${eur(L.pendSum+L.budLeft,true)}</strong>`})}</div><div class="cell" style="order:3;display:grid;gap:20px;min-width:0">${renderLedger(L)}</div><div class="cell" style="order:4;display:grid;gap:20px;min-width:0"><div class="card small">${cashTxt}</div></div></div>
+  <div class="col"><div class="cell" style="order:2;display:grid;gap:20px;min-width:0">${ringsHtml(true)}</div><div class="cell" style="order:5;display:grid;gap:20px;min-width:0">${renderCierre()}</div><div class="cell" style="order:6;display:grid;gap:20px;min-width:0">${renderTareas()}</div><div class="cell" style="order:7;display:grid;gap:20px;min-width:0">${renderIngresos(M)}</div><div class="cell" style="order:8;display:grid;gap:20px;min-width:0">${renderColchon()}</div></div>
+  <section class="section full" id="mis-datos" style="order:9;scroll-margin-top:16px">
     <div class="head"><h2>Mis datos</h2><button class="btn tiny" data-act="settings">Editar</button></div>
     <div class="rows"><div class="row"><span class="grow">Ingreso previsto al mes</span><span class="amt">${eur(monthIncome())}</span></div><div class="row"><span class="grow">Cobros</span><span class="small" style="text-align:right">${payDesc()||"Sin indicar"}<br><button class="btn tiny" data-act="paymode" style="margin-top:6px">Cambiar cómo cobras</button></span></div><div class="row"><span class="grow">Dinero extra esperado</span><span class="amt">${st.rescue!=null?eur(st.rescue):"Sin indicar"}</span></div></div>
     ${/^https?:\/\//.test(st.docUrl||"")?`<p class="small"><a href="${esc(st.docUrl)}" target="_blank" rel="noopener">Abrir mi documento</a></p>`:""}
@@ -631,10 +654,12 @@ function render(){
   const qa=!!Q.trim();$("#q-out").hidden=!qa;
   if(qa){["inicio","panel","gastos","cobros","deudas","proximos","ahorro","zoe"].forEach(x=>$("#v-"+x).hidden=true);renderSearch();return}
   const t=tab();
+  {const T={inicio:"Inicio",panel:"Panel",gastos:"Gastos",cobros:"Cobros",deudas:"Deudas",proximos:"Próximos",ahorro:"Ahorro",zoe:"Gastos con factura"};$("#sect").textContent=T[t]||"";document.title=(T[t]?T[t]+" · ":"")+"Mi Plan Financiero"}
   ["inicio","panel","gastos","cobros","deudas","proximos","ahorro","zoe"].forEach(x=>$("#v-"+x).hidden=x!==t);
   document.querySelectorAll("nav a").forEach(a=>{const on=a.dataset.tab===(t==="zoe"?"gastos":t);a.classList.toggle("on",on);if(on)a.setAttribute("aria-current","page");else a.removeAttribute("aria-current")});
   ({inicio:renderInicio,gastos:renderGastos,cobros:renderCobros,deudas:renderDeudas,proximos:renderProximos,ahorro:renderAhorro,zoe:renderZoe,panel:renderPanel})[t]();
 }
+{let wasWide=innerWidth>=960,rt;window.addEventListener("resize",()=>{clearTimeout(rt);rt=setTimeout(()=>{const w=innerWidth>=960;if(w!==wasWide){wasWide=w;render()}},150)})}
 window.addEventListener("hashchange",()=>{if(Q){Q="";$("#q").value="";$("#q-x").hidden=true}render();window.scrollTo(0,0)});
 
 /* Acciones */
@@ -768,7 +793,7 @@ function panelHtml(){
   const segs=sl.map(([n,v],i)=>{const len=v/tot*C,gap=sl.length>1?2:0,s=`<circle cx="70" cy="70" r="${R}" fill="none" stroke="${PAL[i%PAL.length]}" stroke-width="18" stroke-dasharray="${Math.max(0,len-gap)} ${C}" stroke-dashoffset="${-acc}" transform="rotate(-90 70 70)"><title>${esc(n)}: ${eur(v)}</title></circle>`;acc+=len;return s}).join("");
   const donut=`<section class="pc"><div class="pc-h"><h3>En qué se va el dinero</h3><span>${esc(capFirst(mName))}</span></div>${tot?`<div class="donut"><svg viewBox="0 0 140 140" role="img" aria-label="Reparto de gastos">${segs}<text x="70" y="64" text-anchor="middle" style="font:600 10px var(--body);fill:var(--muted)">Total</text><text x="70" y="82" text-anchor="middle" style="font:700 17px var(--display);fill:var(--ink)">${eur(tot,true)}</text></svg><div class="lg">${sl.map(([n,v],i)=>`<div><i style="background:${PAL[i%PAL.length]}"></i><span>${esc(n)}</span><em>${eur(v,true)}<small>${Math.round(v/tot*100)}%</small></em></div>`).join("")}</div></div>`:'<p class="muted">Aún no hay gastos este mes.</p>'}</section>`;
   // MES A MES (líneas)
-  const ms=monthKeys(6).map(monthFlow),cw=320,ch=150,pl=30,pr=8,pt=10,pb=22,mxv=Math.max(100,...ms.map(x=>Math.max(x.inc,x.out)));
+  const WIDE=innerWidth>=960,ms=monthKeys(6).map(monthFlow),cw=WIDE?560:320,ch=WIDE?220:150,pl=30,pr=8,pt=10,pb=22,mxv=Math.max(100,...ms.map(x=>Math.max(x.inc,x.out)));
   const step=Math.pow(10,Math.floor(Math.log10(mxv/3))),tick=Math.ceil(mxv/3/step)*step,top=tick*3;
   const cx=i=>pl+(cw-pl-pr)*i/(ms.length-1),cy=v=>pt+(ch-pt-pb)*(1-v/top);
   const path=k=>ms.map((x,i)=>`${i?"L":"M"}${cx(i).toFixed(1)},${cy(x[k]).toFixed(1)}`).join("");
@@ -782,7 +807,7 @@ function panelHtml(){
     ${ms.filter(x=>x.inc||x.out).length<3?'<p class="small muted">La gráfica se irá completando cada mes con lo que anotes.</p>':""}</section>`;
   // DEUDAS
   const cards=S.debts.filter(d=>d.kind==="card"&&(d.initial||d.balance)),bal=cards.reduce((a,d)=>a+(d.balance||0),0),ini=cards.reduce((a,d)=>a+(d.initial||0),0),paid=Math.max(0,ini-bal),sim=simulate(setts().extra,setts().pauseUntil),ser=debtSeries(setts().extra,setts().pauseUntil);
-  let proj="";if(ser.length>2){const pw=320,ph=70,mxs=ser[0].v||1,px=i=>i/(ser.length-1)*pw,py=v=>6+(ph-12)*(1-v/mxs);const ln=ser.map((p,i)=>`${i?"L":"M"}${px(i).toFixed(1)},${py(p.v).toFixed(1)}`).join("");
+  let proj="";if(ser.length>2){const pw=WIDE?560:320,ph=WIDE?90:70,mxs=ser[0].v||1,px=i=>i/(ser.length-1)*pw,py=v=>6+(ph-12)*(1-v/mxs);const ln=ser.map((p,i)=>`${i?"L":"M"}${px(i).toFixed(1)},${py(p.v).toFixed(1)}`).join("");
     proj=`<div class="chart"><svg viewBox="0 0 ${pw} ${ph+16}" preserveAspectRatio="none" aria-label="Cómo baja tu deuda"><defs><linearGradient id="dg" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#0E8A7E" stop-opacity=".25"/><stop offset="1" stop-color="#0E8A7E" stop-opacity="0"/></linearGradient></defs><path d="${ln}L${pw},${ph}L0,${ph}Z" fill="url(#dg)"/><path d="${ln}" fill="none" stroke="#0E8A7E" stroke-width="2" vector-effect="non-scaling-stroke"/><text x="0" y="${ph+14}">Hoy</text><text x="${pw}" y="${ph+14}" text-anchor="end">${esc(sim&&!sim.never?sim.end.toLocaleDateString("es-ES",{month:"short",year:"numeric"}).replace(".",""):"")}</text></svg></div>`}
   const debt=cards.length?`<section class="pc"><div class="pc-h"><h3>Tus tarjetas</h3><a class="small" href="#deudas">Ver detalle</a></div>
     <div class="debt-top">${ringSvg(ini?paid/ini:0,"#0E8A7E",96,10,(ini?Math.round(paid/ini*100):0)+"%","pagado")}<div class="stack" style="gap:10px"><div class="mini"><span>Te queda por pagar</span><b>${eur(bal,true)}</b></div><div class="mini"><span>Terminas</span><b>${sim&&!sim.never?esc(sim.end.toLocaleDateString("es-ES",{month:"long",year:"numeric"})):"Sin fecha"}</b></div></div></div>
