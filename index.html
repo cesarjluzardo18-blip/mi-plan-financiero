@@ -1,6 +1,6 @@
 <!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <title>Mi Plan Financiero</title>
-<meta name="build" content="202611191827">
+<meta name="build" content="202611191835">
 <meta name="theme-color" content="#1F4E8C">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon-192.png">
@@ -508,26 +508,10 @@ function renderInicio(){
   ${balanceCard({label:"Te queda ahora, "+dShort(t),big:eur(Math.round(L.now*100)/100),neg:L.now<0,tri:[["Ingresado",eur(L.inc,true)],["Gastado",eur(L.paid+L.exp,true)],["A fin de mes",eur(Math.round(L.end),true),L.end<0?"#FFB4A9":"#8FE3B5"]],foot:`Pendiente de pagar este mes: <strong>${eur(L.pendSum+L.budLeft,true)}</strong>`})}
   ${ringsHtml(true)}
   ${renderLedger(L)}
+  <div class="card small">${cashTxt}</div>
   ${renderCierre()}
   ${renderTareas()}
   ${renderIngresos(M)}
-  <section class="section">
-    <div class="head"><h2>Cobros del mes</h2><span class="small muted">€ por día</span></div>
-    <div class="card rulerwrap"><div class="ruler">${bars}</div></div>
-    <div class="small">${cashTxt}</div>
-  </section>
-  <section class="section">
-    <div class="head"><h2>Próximos cobros</h2><a class="small" href="#cobros">Ver todos</a></div>
-    <div class="rows">${ch.slice(0,5).map(c=>`<div class="row"><div class="date"><b>${c.d.getDate()}</b><span>${esc(c.d.toLocaleDateString("es-ES",{month:"short"}).replace(".",""))}</span></div><div class="grow"><strong>${esc(c.r.name)}${esc(lastOf(c.r.id))}</strong><div class="small muted">${whenTxt(c.n)}</div></div>${c.n<=3?`<span class="pill warn">${c.n===0?"Hoy":c.n===1?"Mañana":"En "+c.n+" días"}</span>`:""}<span class="amt">${eur(c.r.amount)}</span></div>`).join("")||'<div class="row muted">Sin cobros con fecha.</div>'}</div>
-  </section>
-  <section class="section">
-    <div class="head"><h2>Tarjetas</h2><a class="small" href="#deudas">Ver detalle</a></div>
-    <div class="card stack"><div class="stats"><div class="stat"><span class="label">Debes</span><b>${eur(bal,true)}</b></div><div class="stat"><span class="label">Terminas</span><b>${sim&&!sim.never?esc(sim.end.toLocaleDateString("es-ES",{month:"short",year:"numeric"}).replace(".","")):"Sin fecha"}</b></div></div><div class="meter good"><i style="width:${ini?Math.min(100,Math.max(0,(ini-bal)/ini*100)):0}%"></i></div>${hasLim?`<p class="small">Disponible en tus tarjetas: <strong>${eur(avail)}</strong></p>`:""}</div>
-  </section>
-  <section class="section">
-    <div class="head"><h2>Gastos que vienen</h2><a class="small" href="#proximos">Ver todos</a></div>
-    <div class="alert ${P.gap>0?"warn":"info"}"><div class="grow">${P.gap>0?`<strong>Faltan unos ${eur(P.gap,true)}</strong> hasta ${esc(mLong(P.last))}.`:`<strong>Cubiertos</strong> con lo previsto.`}<div class="small">${P.rescue?`Contando ${eur(P.rescue)} de dinero extra.`:""}${P.missing?` Falta poner el importe de ${P.missing} gasto${P.missing>1?"s":""}.`:""}</div></div></div>
-  </section>
   ${renderColchon()}
   <section class="section" id="mis-datos" style="scroll-margin-top:16px">
     <div class="head"><h2>Mis datos</h2><button class="btn tiny" data-act="settings">Editar</button></div>
@@ -575,9 +559,6 @@ function renderGastos(){
   const M=month(),m=ym(now());
   const list=monthExp(m).slice().sort((a,b)=>(b.date||"").localeCompare(a.date||""));
   $("#exp-out").innerHTML=`
-  <section class="section"><div class="head"><h2>Presupuesto del mes</h2><span class="amt">${eur(M.total)} gastados</span></div>
-    <div class="card stack">${budgets().map(b=>{const s=M.spent(b.name),p=b.amount?Math.min(100,s/b.amount*100):0,o=s>b.amount;return`<div class="stack" style="gap:4px"><div class="head"><span>${esc(b.name)}</span><span class="small ${o?"":"muted"}" ${o?'style="color:var(--bad);font-weight:700"':""}>${eur(s)} de ${eur(b.amount)}</span></div><div class="meter ${o?"over":""}"><i style="width:${p}%"></i></div></div>`}).join("")}
-    <p class="small muted">Lo que anotes en categorías que no son presupuesto (${esc(extraCats().join(", "))}) resta de tu dinero libre.</p></div></section>
   <section class="section"><h2>Gastos de este mes</h2>
     <div class="rows">${list.map(e=>`<button class="row" data-act="${e.receipt?"zoe-open":"exp-edit"}" data-id="${esc(e.id)}"><div class="grow"><strong>${esc(e.concept)}${e.receipt?" 📎":""}</strong><div class="small muted">${esc(dShort(parseISO(e.date)))}${e.place?` · ${esc(e.place)}`:""} · ${esc(e.cat)}</div></div><span class="${e.pay?"pay "+payCls(e.pay):"pill warn"}">${esc(e.pay||"Sin forma de pago")}</span><span class="amt">${eur(e.amount)}</span></button>`).join("")||'<div class="row muted">Todavía no hay gastos este mes. Añade el primero con el formulario de arriba.</div>'}</div></section>`;
 }
@@ -810,7 +791,7 @@ function panelHtml(){
   const pl3=monthKeys(3),byP={};S.expenses.filter(e=>pl3.includes((e.date||"").slice(0,7))&&(e.place||"").trim()).forEach(e=>{const k=e.place.trim().toLowerCase();byP[k]=byP[k]||{name:capFirst(e.place.trim()),v:0,n:0};byP[k].v+=e.amount||0;byP[k].n++});
   const tops=Object.values(byP).sort((a,b)=>b.v-a.v).slice(0,5),maxP=Math.max(1,...tops.map(x=>x.v));
   const shops=`<section class="pc"><div class="pc-h"><h3>Dónde gastas más</h3><span>Últimos 3 meses</span></div>${tops.length?tops.map((x,i)=>`<div class="shop"><span class="av" style="background:${PAL[i%PAL.length]}">${esc(x.name[0]||"?")}</span><span class="nm">${esc(x.name)}</span><strong>${eur(x.v)}</strong><span class="sb">${x.n} ${x.n===1?"compra":"compras"} · ${Math.round(x.v/tops.reduce((a,y)=>a+y.v,0)*100)} %</span><span></span><div class="bar"><i style="width:${x.v/maxP*100}%;background:${PAL[i%PAL.length]}"></i></div></div>`).join(""):'<p class="muted">Cuando anotes dónde compras, aquí verás en qué tiendas se te va más dinero.</p>'}</section>`;
-  return hero+rings+donut+evo+debt+shops;
+  return donut+evo+debt+shops;
 }
 function renderPanel(){$("#v-panel").innerHTML=panelHtml()}
 
