@@ -1,6 +1,6 @@
 <!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <title>Mi Plan Financiero</title>
-<meta name="build" content="202611191835">
+<meta name="build" content="202611191921">
 <meta name="theme-color" content="#1F4E8C">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon-192.png">
@@ -180,6 +180,7 @@ mark{background:color-mix(in srgb,var(--accent) 24%,transparent);color:inherit;b
 .debt-top svg{width:96px;height:96px;display:block}
 .mini{display:grid;gap:2px}.mini span{font-size:.75rem;color:var(--muted)}.mini b{font:700 1.25rem var(--display)}
 @media (min-width:960px){#v-panel{grid-template-columns:repeat(2,minmax(0,1fr))}#v-panel>.phero{grid-column:1/-1}}
+#upd{position:fixed;left:50%;transform:translateX(-50%);top:calc(12px + env(safe-area-inset-top,0px));z-index:40;display:flex;gap:12px;align-items:center;background:var(--ink);color:var(--bg);padding:10px 12px 10px 16px;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.25);font-weight:600;font-size:.9375rem;max-width:calc(100vw - 32px)}
 #login{position:fixed;inset:0;z-index:30;background:var(--bg);overflow:auto;display:grid;place-items:center;padding:24px max(16px,env(safe-area-inset-left,0px))}
 #login .box{width:min(400px,100%);display:grid;gap:16px}
 #login .brand{font:700 1.6rem var(--display)}
@@ -885,11 +886,19 @@ async function zoeOpen(id){
 }
 function zoeBtn(){const b=$("#zoe-btn");if(b)b.textContent="📎 "+zoeTitle()}
 
-/* Actualización automática: al volver a la app, si hay versión nueva, recarga */
-(()=>{const cur=()=>(document.querySelector('meta[name="build"]')||{}).content||"";let busy=false;
-  async function check(){if(busy||document.visibilityState!=="visible"||$("#dlg").open)return;busy=true;
-    try{const t=await (await fetch("./?v="+Date.now(),{cache:"no-store"})).text(),m=t.match(/<meta name="build" content="([^"]+)"/);if(m&&m[1]!==cur()){location.reload();return}}catch(_){}busy=false}
-  document.addEventListener("visibilitychange",check);window.addEventListener("focus",check);setTimeout(check,4000);})();
+/* Actualización automática: busca versión nueva al abrir, al volver a la app y cada 15 min */
+(()=>{const cur=()=>(document.querySelector('meta[name="build"]')||{}).content||"";let busy=false,shown=false;
+  const typing=()=>[...document.querySelectorAll("#exp-form input[type=text],#q")].some(x=>x.value.trim())||$("#dlg").open;
+  function banner(){if(shown)return;shown=true;const b=document.createElement("div");b.id="upd";b.setAttribute("role","status");
+    b.innerHTML='<span>Hay una versión nueva de la app.</span><button class="btn tiny primary" type="button">Actualizar</button>';
+    b.querySelector("button").onclick=()=>location.reload();document.body.appendChild(b)}
+  async function check(){if(busy||document.visibilityState!=="visible")return;busy=true;
+    try{const t=await (await fetch("./?v="+Date.now(),{cache:"no-store"})).text(),m=t.match(/<meta name="build" content="([^"]+)"/);
+      if(m&&m[1]>cur()){if(typing())banner();else{location.reload();return}}}catch(_){}
+    try{const r=await navigator.serviceWorker?.getRegistration();r&&r.update()}catch(_){}
+    busy=false}
+  document.addEventListener("visibilitychange",check);window.addEventListener("focus",check);window.addEventListener("online",check);
+  setTimeout(check,3000);setInterval(check,15*60*1000);})();
 
 /* Avisos (notificaciones) */
 const lsGet=k=>{try{return localStorage.getItem(k)}catch(_){return null}};
