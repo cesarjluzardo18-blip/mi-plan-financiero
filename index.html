@@ -1,6 +1,6 @@
 <!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <title>Mi Plan Financiero</title>
-<meta name="build" content="202611191921">
+<meta name="build" content="202611191923">
 <meta name="theme-color" content="#1F4E8C">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon-192.png">
@@ -889,12 +889,15 @@ function zoeBtn(){const b=$("#zoe-btn");if(b)b.textContent="📎 "+zoeTitle()}
 /* Actualización automática: busca versión nueva al abrir, al volver a la app y cada 15 min */
 (()=>{const cur=()=>(document.querySelector('meta[name="build"]')||{}).content||"";let busy=false,shown=false;
   const typing=()=>[...document.querySelectorAll("#exp-form input[type=text],#q")].some(x=>x.value.trim())||$("#dlg").open;
-  function banner(){if(shown)return;shown=true;const b=document.createElement("div");b.id="upd";b.setAttribute("role","status");
+  const go=v=>{try{sessionStorage.setItem("updTried",v)}catch(_){}location.replace(location.pathname+"?v="+encodeURIComponent(v)+location.hash)};
+  function banner(v){if(shown)return;shown=true;const b=document.createElement("div");b.id="upd";b.setAttribute("role","status");
     b.innerHTML='<span>Hay una versión nueva de la app.</span><button class="btn tiny primary" type="button">Actualizar</button>';
-    b.querySelector("button").onclick=()=>location.reload();document.body.appendChild(b)}
+    b.querySelector("button").onclick=()=>go(v);document.body.appendChild(b)}
   async function check(){if(busy||document.visibilityState!=="visible")return;busy=true;
     try{const t=await (await fetch("./?v="+Date.now(),{cache:"no-store"})).text(),m=t.match(/<meta name="build" content="([^"]+)"/);
-      if(m&&m[1]>cur()){if(typing())banner();else{location.reload();return}}}catch(_){}
+      if(m&&m[1]>cur()){let tried="";try{tried=sessionStorage.getItem("updTried")||""}catch(_){}
+        if(tried===m[1]){busy=false;return}
+        if(typing())banner(m[1]);else{go(m[1]);return}}}catch(_){}
     try{const r=await navigator.serviceWorker?.getRegistration();r&&r.update()}catch(_){}
     busy=false}
   document.addEventListener("visibilitychange",check);window.addEventListener("focus",check);window.addEventListener("online",check);
