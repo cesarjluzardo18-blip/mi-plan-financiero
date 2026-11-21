@@ -216,6 +216,16 @@ nav .ni,nav .brand,#sect{display:none}
 #login .ok{color:var(--good);font-weight:600;font-size:.9375rem}
 .linkbtn{background:none;border:0;color:var(--accent);font:600 .9375rem var(--body);padding:4px 0;cursor:pointer;text-align:left}
 input[type=email],input[type=password]{width:100%;min-width:0;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);font:400 1rem var(--body)}
+details.day{border-top:1px solid var(--line)}
+details.day>summary{list-style:none;display:flex;align-items:center;gap:12px;padding:12px 14px;cursor:pointer}
+details.day>summary::-webkit-details-marker{display:none}
+details.day>summary:hover{background:var(--surface-2)}
+details.day .grow{flex:1;min-width:0}
+details.day .chev{color:var(--muted);font-size:1.4rem;line-height:1;transition:transform .15s;flex:0 0 auto}
+details.day[open] .chev{transform:rotate(90deg)}
+details.day[open]>summary{background:var(--surface-2)}
+details.day .rows.inner{border:0;border-top:1px solid var(--line);border-radius:0;background:var(--bg)}
+details.day .rows.inner .row{padding-left:28px}
 .cats{display:grid;gap:8px}
 details.cat{background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow:hidden}
 details.cat>summary{list-style:none;display:flex;align-items:center;gap:12px;padding:12px 14px;cursor:pointer;min-height:44px}
@@ -501,12 +511,12 @@ function renderColchon(){
 function ledger(){
   const t=now(),m=ym(t),y=t.getFullYear(),mo=t.getMonth(),days=dim(t),ev=[];
   const incs=S.incomes.filter(i=>(i.date||"").startsWith(m));
-  incs.forEach(i=>ev.push({d:parseISO(i.date),amt:i.amount||0,label:i.source||"Ingreso"}));
+  incs.forEach(i=>ev.push({d:parseISO(i.date),amt:i.amount||0,label:i.source||"Ingreso",act:"inc-edit",id:i.id,sub:"Ingreso"}));
   const cob=active().filter(r=>r.type==="cobro"),isPaid=r=>(r.paid||[]).includes(m);
-  cob.filter(isPaid).forEach(r=>ev.push({d:(r.paidOn&&r.paidOn[m])?parseISO(r.paidOn[m]):new Date(y,mo,Math.min(r.day||1,days)),amt:-(r.amount||0),label:r.name+lastOf(r.id)}));
-  const exps=monthExp(m);exps.filter(e=>!e.cardId).forEach(e=>ev.push({d:parseISO(e.date),amt:-(e.amount||0),label:e.concept}));
+  cob.filter(isPaid).forEach(r=>ev.push({d:(r.paidOn&&r.paidOn[m])?parseISO(r.paidOn[m]):new Date(y,mo,Math.min(r.day||1,days)),amt:-(r.amount||0),label:r.name+lastOf(r.id),act:"rec-edit",id:r.id,sub:"Cobro fijo"}));
+  const exps=monthExp(m);exps.filter(e=>!e.cardId).forEach(e=>ev.push({d:parseISO(e.date),amt:-(e.amount||0),label:e.concept,act:e.receipt?"zoe-open":"exp-edit",id:e.id,sub:[e.cat&&capFirst(e.cat),e.place].filter(Boolean).join(" · "),pay:e.pay}));
   const savs=S.savings.filter(x=>x.who==="Yo"&&x.amount>0&&(x.date||"").startsWith(m));
-  savs.forEach(x=>ev.push({d:parseISO(x.date),amt:-x.amount,label:"Ahorro"}));
+  savs.forEach(x=>ev.push({d:parseISO(x.date),amt:-x.amount,label:"Ahorro",act:"sav-edit",id:x.id,sub:x.note||"Apartado para ahorro"}));
   const byDay=new Map();ev.sort((a,b)=>a.d-b.d).forEach(e=>{const k=e.d.getDate();if(!byDay.has(k))byDay.set(k,[]);byDay.get(k).push(e)});
   let run=0;const rows=[];
   for(const [k,list] of byDay){const sum=list.reduce((a,e)=>a+e.amt,0);run+=sum;rows.push({day:k,d:list[0].d,list,sum,run})}
@@ -523,10 +533,13 @@ function ledger(){
   let r2=run;const fut=[...dated,...undated].map(x=>{r2+=x.amt;return{...x,run:r2}});
   return{rows,now:run,pend,pendSum,budLeft,fut,expSum,end:run+expSum-pendSum-budLeft,inc:sum(incs),paid:sum(cob.filter(isPaid)),exp:sum(exps.filter(e=>!e.cardId))+sum(savs),empty:!ev.length};
 }
+const OPEN_DAYS=new Set();
+document.addEventListener("toggle",ev=>{const d=ev.target;if(d&&d.matches&&d.matches("details.day")){if(d.open)OPEN_DAYS.add(d.dataset.day);else OPEN_DAYS.delete(d.dataset.day)}},true);
 function renderLedger(L){
   const today=now().getDate(),col=v=>v<0?"var(--bad)":"inherit",mon=d=>esc(d.toLocaleDateString("es-ES",{month:"short"}).replace(".",""));
   const desc=list=>{const ins=list.filter(e=>e.amt>0).map(e=>e.label),outs=list.filter(e=>e.amt<0).map(e=>e.label);const o=outs.length>3?`${outs.slice(0,2).join(", ")} y ${outs.length-2} más`:outs.join(", ");return [ins.join(", "),o].filter(Boolean).join(" · ")};
-  const body=L.rows.slice().reverse().map(r=>{const isIn=r.sum>0;return`<div class="row"><div class="date"><b>${r.day}</b><span>${mon(r.d)}</span></div><div class="grow"><strong style="color:${isIn?"var(--good)":"inherit"}">${isIn?"+":"−"}${eur(Math.abs(r.sum))}</strong><div class="small muted">${esc(desc(r.list))}</div></div><div style="text-align:right"><span class="small muted" style="display:block">te queda</span><span class="amt" style="color:${col(r.run)}">${eur(r.run)}</span></div></div>`}).join("")||'<div class="row muted">Aún no has anotado nada este mes. Añade un ingreso, un gasto o marca un cobro como pagado y empezará a contar.</div>';
+  const item=e=>{const inn=e.amt>0;return`<button class="row" type="button"${e.act?` data-act="${e.act}" data-id="${esc(e.id)}"`:""}><div class="grow"><strong>${esc(e.label)}</strong>${e.sub?`<div class="small muted">${esc(e.sub)}</div>`:""}</div>${e.pay?`<span class="pay ${payCls(e.pay)}">${esc(e.pay)}</span>`:""}<span class="amt" style="color:${inn?"var(--good)":"inherit"}">${inn?"+":"−"}${eur(Math.abs(e.amt))}</span></button>`};
+  const body=L.rows.slice().reverse().map(r=>{const isIn=r.sum>0,many=r.list.length>1,k=iso(r.d);const head=`<div class="date"><b>${r.day}</b><span>${mon(r.d)}</span></div><div class="grow"><strong style="color:${Math.abs(r.sum)<0.005?"inherit":isIn?"var(--good)":"inherit"}">${Math.abs(r.sum)<0.005?"":isIn?"+":"−"}${eur(Math.abs(r.sum))}</strong><div class="small muted">${many?`${r.list.length} movimientos · toca para verlos`:esc(r.list[0].label)}</div></div><div style="text-align:right"><span class="small muted" style="display:block">te queda</span><span class="amt" style="color:${col(r.run)}">${eur(r.run)}</span></div><span class="chev" aria-hidden="true">›</span>`;return`<details class="day" data-day="${k}"${OPEN_DAYS.has(k)?" open":""}><summary>${head}</summary><div class="rows inner">${r.list.slice().sort((a,b)=>b.amt-a.amt).map(item).join("")}</div></details>`}).join("")||'<div class="row muted">Aún no has anotado nada este mes. Añade un ingreso, un gasto o marca un cobro como pagado y empezará a contar.</div>';
   const hoy=`<div class="row today-line"><span class="grow"><strong>Hoy</strong> <span class="small muted">${esc(dShort(now()))}</span></span><span class="small muted">te queda</span><span class="amt" style="color:${L.now<0?"var(--bad)":"var(--good)"}">${eur(L.now)}</span></div>`;
   const fut=L.fut.map(x=>{const late=x.kind==="cob"&&x.day&&x.day<today;const tag=x.kind==="inc"?'<span class="pill good">Previsto</span>':late?'<span class="pill bad">Sin pagar</span>':'<span class="pill plain">Pendiente</span>';const inner=`<div class="date">${x.day?`<b>${x.day}</b><span>${mon(now())}</span>`:"<b>…</b>"}</div><div class="grow"><strong style="color:${x.amt>0?"var(--good)":"inherit"}">${x.amt>0?"+":"−"}${eur(Math.abs(x.amt))}</strong><div class="small muted">${esc(x.label)}</div>${tag}</div><div style="text-align:right"><span class="small muted" style="display:block">te quedará</span><span class="amt" style="color:${col(x.run)}">${eur(x.run)}</span></div>`;return x.kind==="cob"?`<button class="row fut" data-act="paid" data-id="${esc(x.id)}" title="Marcar como pagado">${inner}</button>`:`<div class="row fut">${inner}</div>`}).join("");
   return`<section class="section"><div class="head"><h2>Cómo va el mes</h2><span class="small muted">Día a día</span></div><div class="rows">${hoy}${body}${fut?`<div class="row" style="background:var(--surface-2)"><strong class="small">Lo que viene este mes, en orden</strong></div>${fut}`:""}<div class="row"><strong class="grow">Saldo previsto a fin de mes</strong><span class="amt" style="color:${L.end<0?"var(--bad)":"var(--good)"}">${eur(L.end)}</span></div></div><p class="small muted">Arriba, hoy y lo más reciente; bajando, los días anteriores. Al final, la proyección de lo que queda de mes: suma cada cobro tuyo cuando le toca y resta cada pago en su fecha, así ves con cuánto llegas a cada momento. Cuando cobres, anota el ingreso y la previsión se sustituye por el real. Toca un pago pendiente para marcarlo como pagado.</p></section>`;
