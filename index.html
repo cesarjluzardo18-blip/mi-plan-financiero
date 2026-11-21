@@ -216,16 +216,18 @@ nav .ni,nav .brand,#sect{display:none}
 #login .ok{color:var(--good);font-weight:600;font-size:.9375rem}
 .linkbtn{background:none;border:0;color:var(--accent);font:600 .9375rem var(--body);padding:4px 0;cursor:pointer;text-align:left}
 input[type=email],input[type=password]{width:100%;min-width:0;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);font:400 1rem var(--body)}
-details.day{border-top:1px solid var(--line)}
-details.day>summary{list-style:none;display:flex;align-items:center;gap:12px;padding:12px 14px;cursor:pointer}
+details.day{border-top:1px solid var(--line);display:block;width:100%;min-width:0;justify-self:stretch;box-sizing:border-box}
+details.day>summary{list-style:none;display:flex;align-items:center;gap:12px;padding:12px 14px;cursor:pointer;width:100%;box-sizing:border-box;border-left:3px solid transparent}
 details.day>summary::-webkit-details-marker{display:none}
 details.day>summary:hover{background:var(--surface-2)}
 details.day .grow{flex:1;min-width:0}
 details.day .chev{color:var(--muted);font-size:1.4rem;line-height:1;transition:transform .15s;flex:0 0 auto}
 details.day[open] .chev{transform:rotate(90deg)}
-details.day[open]>summary{background:var(--surface-2)}
+details.day[open]>summary{background:var(--surface-2);border-left-color:var(--accent)}
 details.day .rows.inner{border:0;border-top:1px solid var(--line);border-radius:0;background:var(--bg)}
-details.day .rows.inner .row{padding-left:28px}
+details.day .rows.inner{border-left:3px solid var(--accent)}
+details.day .rows.inner .row{padding:10px 14px 10px 67px}
+details.day .rows.inner .row strong{font-weight:600}
 .cats{display:grid;gap:8px}
 details.cat{background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow:hidden}
 details.cat>summary{list-style:none;display:flex;align-items:center;gap:12px;padding:12px 14px;cursor:pointer;min-height:44px}
