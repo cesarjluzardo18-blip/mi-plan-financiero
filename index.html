@@ -216,6 +216,20 @@ nav .ni,nav .brand,#sect{display:none}
 #login .ok{color:var(--good);font-weight:600;font-size:.9375rem}
 .linkbtn{background:none;border:0;color:var(--accent);font:600 .9375rem var(--body);padding:4px 0;cursor:pointer;text-align:left}
 input[type=email],input[type=password]{width:100%;min-width:0;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);font:400 1rem var(--body)}
+.cats{display:grid;gap:8px}
+details.cat{background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+details.cat>summary{list-style:none;display:flex;align-items:center;gap:12px;padding:12px 14px;cursor:pointer;min-height:44px}
+details.cat>summary::-webkit-details-marker{display:none}
+details.cat>summary:hover{background:var(--surface-2)}
+details.cat .grow{flex:1;min-width:0}
+details.cat .dot{width:10px;height:10px;border-radius:50%;flex:0 0 auto}
+details.cat .chev{color:var(--muted);font-size:1.4rem;line-height:1;transition:transform .15s;flex:0 0 auto}
+details.cat[open] .chev{transform:rotate(90deg)}
+details.cat .meter{margin:0 14px 12px}
+details.cat .rows.inner{border:0;border-top:1px solid var(--line);border-radius:0;background:var(--bg)}
+.lg button.lgb{all:unset;display:grid;grid-template-columns:10px minmax(0,1fr) auto;gap:8px;align-items:start;font-size:.875rem;line-height:1.25;cursor:pointer;border-radius:6px}
+.lg button.lgb:hover span{text-decoration:underline}
+.lg button.lgb:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 </style>
 
 <div class="wrap">
@@ -572,6 +586,8 @@ function quickList(){
   if(cats.includes("Gasolina")&&!out.some(x=>x.cat==="Gasolina"&&x.amount===25))out.unshift({concept:"Gasolina",amount:25,cat:"Gasolina"});
   return out.slice(0,6);
 }
+const OPEN_CATS=new Set();
+document.addEventListener("toggle",ev=>{const d=ev.target;if(d&&d.matches&&d.matches("details.cat")){if(d.open)OPEN_CATS.add(d.dataset.cat);else OPEN_CATS.delete(d.dataset.cat)}},true);
 function renderGastos(){
   zoeBtn();
   const sel=$("#e-cat"),cur=sel.value,cats=[...budgets().map(b=>b.name),...extraCats()];
@@ -582,7 +598,12 @@ function renderGastos(){
   $("#quick").innerHTML=QUICK.map((q,i)=>`<button type="button" class="btn tiny" data-act="quick" data-i="${i}">${esc(q.concept)}${q.place?` (${esc(q.place)})`:""} ${eur(q.amount)}${q.pay?` · ${esc(q.pay)}`:""}</button>`).join("")||'<span class="small muted">Los gastos que repitas aparecerán aquí.</span>';
   const M=month(),m=ym(now());
   const list=monthExp(m).slice().sort((a,b)=>(b.date||"").localeCompare(a.date||""));
-  $("#exp-out").innerHTML=`
+  const grp={},budMap={};budgets().forEach(b=>{budMap[b.name]=b.amount;grp[b.name]=[]});
+  list.forEach(e=>{const k=e.cat||"Sin categoría";(grp[k]=grp[k]||[]).push(e)});
+  const catList=Object.entries(grp).map(([k,v])=>({k,v,t:v.reduce((x,e)=>x+(e.amount||0),0),b:budMap[k]})).sort((x,y)=>y.t-x.t||x.k.localeCompare(y.k));
+  const expRow=e=>`<button class="row" data-act="${e.receipt?"zoe-open":"exp-edit"}" data-id="${esc(e.id)}"><div class="grow"><strong>${esc(e.concept)}${e.receipt?" 📎":""}</strong><div class="small muted">${esc(dShort(parseISO(e.date)))}${e.place?` · ${esc(e.place)}`:""}</div></div><span class="${e.pay?"pay "+payCls(e.pay):"pill warn"}">${esc(e.pay||"Sin forma de pago")}</span><span class="amt">${eur(e.amount)}</span></button>`;
+  const catHtml=catList.length?`<section class="section"><div class="head"><h2>Por categoría</h2><span class="small muted">Toca una para ver qué hay dentro</span></div><div class="cats">${catList.map((c,i)=>{const p=c.b?Math.min(100,c.t/c.b*100):0,over=c.b&&c.t>c.b;return`<details class="cat" data-cat="${esc(c.k)}"${OPEN_CATS.has(c.k)?" open":""}><summary><span class="dot" style="background:${PAL[i%PAL.length]}"></span><span class="grow"><strong>${esc(capFirst(c.k))}</strong><span class="small muted" style="display:block">${c.v.length} ${c.v.length===1?"gasto":"gastos"}${c.b?` · presupuesto ${eur(c.b)}${over?"":" · quedan "+eur(c.b-c.t)}`:""}</span></span><span class="amt"${over?' style="color:var(--bad)"':""}>${eur(c.t)}</span><span class="chev" aria-hidden="true">›</span></summary>${c.b?`<div class="meter ${over?"over":""}"><i style="width:${p}%"></i></div>`:""}<div class="rows inner">${c.v.map(expRow).join("")||'<div class="row muted">Todavía no hay gastos en esta categoría este mes.</div>'}</div></details>`}).join("")}</div></section>`:"";
+  $("#exp-out").innerHTML=`${catHtml}
   <section class="section"><h2>Gastos de este mes</h2>
     <div class="rows">${list.map(e=>`<button class="row" data-act="${e.receipt?"zoe-open":"exp-edit"}" data-id="${esc(e.id)}"><div class="grow"><strong>${esc(e.concept)}${e.receipt?" 📎":""}</strong><div class="small muted">${esc(dShort(parseISO(e.date)))}${e.place?` · ${esc(e.place)}`:""} · ${esc(e.cat)}</div></div><span class="${e.pay?"pay "+payCls(e.pay):"pill warn"}">${esc(e.pay||"Sin forma de pago")}</span><span class="amt">${eur(e.amount)}</span></button>`).join("")||'<div class="row muted">Todavía no hay gastos este mes. Añade el primero con el formulario de arriba.</div>'}</div></section>`;
 }
@@ -678,6 +699,7 @@ document.addEventListener("click",ev=>{
   const b=ev.target.closest("[data-act]");if(!b)return;
   const a=b.dataset.act,id=b.dataset.id;
   if(a==="push"){enablePush()}
+  else if(a==="open-cat"){OPEN_CATS.add(b.dataset.cat);if(Q)clearQ();location.hash="#gastos";setTimeout(()=>{const el=[...document.querySelectorAll("details.cat")].find(x=>x.dataset.cat===b.dataset.cat);if(el){el.open=true;el.scrollIntoView({behavior:"smooth",block:"start"})}},80)}
   else if(a==="go-zoe"){location.hash="#zoe"}
   else if(a==="zoe-new"){zoeForm()}
   else if(a==="zoe-open"){zoeOpen(id)}
@@ -800,11 +822,11 @@ function panelHtml(){
   const hero=balanceCard({label:"Balance de "+mName,big:(F.net>=0?"+":"−")+eur(Math.abs(F.net),true),tri:[["Ingresos",eur(F.inc,true)],["Gastos",eur(F.out,true)],["Ahorro",eur(F.sav,true)]]});
   const rings=ringsHtml(false);
   // DONUT
-  const parts={};exps.forEach(e=>{parts[capFirst(e.cat)]=(parts[capFirst(e.cat)]||0)+(e.amount||0)});if(F.cob)parts["Cobros fijos"]=F.cob;
+  const parts={},orig={};exps.forEach(e=>{const kk=capFirst(e.cat);orig[kk]=e.cat;parts[kk]=(parts[kk]||0)+(e.amount||0)});if(F.cob)parts["Cobros fijos"]=F.cob;
   let sl=Object.entries(parts).filter(x=>x[1]>0).sort((a,b)=>b[1]-a[1]);if(sl.length>6){const rest=sl.slice(5).reduce((a,x)=>a+x[1],0);sl=[...sl.slice(0,5),["Otros",rest]]}
   const tot=sl.reduce((a,x)=>a+x[1],0),R=56,C=2*Math.PI*R;let acc=0;
   const segs=sl.map(([n,v],i)=>{const len=v/tot*C,gap=sl.length>1?2:0,s=`<circle cx="70" cy="70" r="${R}" fill="none" stroke="${PAL[i%PAL.length]}" stroke-width="18" stroke-dasharray="${Math.max(0,len-gap)} ${C}" stroke-dashoffset="${-acc}" transform="rotate(-90 70 70)"><title>${esc(n)}: ${eur(v)}</title></circle>`;acc+=len;return s}).join("");
-  const donut=`<section class="pc"><div class="pc-h"><h3>En qué se va el dinero</h3><span>${esc(capFirst(mName))}</span></div>${tot?`<div class="donut"><svg viewBox="0 0 140 140" role="img" aria-label="Reparto de gastos">${segs}<text x="70" y="64" text-anchor="middle" style="font:600 10px var(--body);fill:var(--muted)">Total</text><text x="70" y="82" text-anchor="middle" style="font:700 17px var(--display);fill:var(--ink)">${eur(tot,true)}</text></svg><div class="lg">${sl.map(([n,v],i)=>`<div><i style="background:${PAL[i%PAL.length]}"></i><span>${esc(n)}</span><em>${eur(v,true)}<small>${Math.round(v/tot*100)}%</small></em></div>`).join("")}</div></div>`:'<p class="muted">Aún no hay gastos este mes.</p>'}</section>`;
+  const donut=`<section class="pc"><div class="pc-h"><h3>En qué se va el dinero</h3><span>${esc(capFirst(mName))}</span></div>${tot?`<div class="donut"><svg viewBox="0 0 140 140" role="img" aria-label="Reparto de gastos">${segs}<text x="70" y="64" text-anchor="middle" style="font:600 10px var(--body);fill:var(--muted)">Total</text><text x="70" y="82" text-anchor="middle" style="font:700 17px var(--display);fill:var(--ink)">${eur(tot,true)}</text></svg><div class="lg">${sl.map(([n,v],i)=>{const inner=`<i style="background:${PAL[i%PAL.length]}"></i><span>${esc(n)}</span><em>${eur(v,true)}<small>${Math.round(v/tot*100)}%</small></em>`;return orig[n]!=null?`<button type="button" class="lgb" data-act="open-cat" data-cat="${esc(orig[n])}" title="Ver los gastos de ${esc(n)}">${inner}</button>`:`<div>${inner}</div>`}).join("")}</div>${sl.some(([n])=>orig[n]!=null)?'<p class="small muted" style="margin-top:8px">Toca una categoría para ver sus gastos.</p>':""}</div>`:'<p class="muted">Aún no hay gastos este mes.</p>'}</section>`;
   // MES A MES (líneas)
   const WIDE=innerWidth>=960,ms=monthKeys(6).map(monthFlow),cw=WIDE?560:320,ch=WIDE?220:150,pl=30,pr=8,pt=10,pb=22,mxv=Math.max(100,...ms.map(x=>Math.max(x.inc,x.out)));
   const step=Math.pow(10,Math.floor(Math.log10(mxv/3))),tick=Math.ceil(mxv/3/step)*step,top=tick*3;
