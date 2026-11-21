@@ -28,6 +28,9 @@
   --bg:#0B1426;--surface:#15223B;--surface-2:#1D2D4B;--ink:#E6ECF5;--muted:#8F9DB5;--line:#26385A;--accent:#8FB3E8;--accent-ink:#0B1426;--soft:#1A2D4F;--good:#6FD3A0;--good-soft:#14382E;--warn:#F0C27A;--warn-soft:#3D3019;--bad:#FF8A80;--bad-soft:#45202A;--silver:#D7DEE8;color-scheme:dark}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
+.sync{appearance:none;border:0;background:var(--good-soft);color:var(--good);font:700 .75rem var(--body);padding:5px 11px;border-radius:99px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.sync i{width:8px;height:8px;border-radius:50%;background:currentColor}
+.sync.stale{background:var(--warn-soft);color:var(--warn)}
 body{background:var(--bg);color:var(--ink);font:400 16px/1.45 var(--body);font-variant-numeric:tabular-nums}
 .wrap{max-width:640px;margin:0 auto;padding-block:20px 104px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:20px}
 h1,h2,h3{font-family:var(--display);margin:0;text-wrap:balance}
@@ -245,7 +248,7 @@ details.cat .rows.inner{border:0;border-top:1px solid var(--line);border-radius:
 </style>
 
 <div class="wrap">
-  <header class="top"><div><div class="small" style="color:var(--accent);font-weight:600;letter-spacing:.04em" id="hello">Hola</div><h1><span class="t-app">Mi Plan Financiero</span><span id="sect"></span></h1></div><div style="display:flex;align-items:center;gap:10px"><span class="muted small" id="today"></span><button type="button" class="btn tiny" data-act="go-datos">⚙ Mis datos</button></div></header>
+  <header class="top"><div><div class="small" style="color:var(--accent);font-weight:600;letter-spacing:.04em" id="hello">Hola</div><h1><span class="t-app">Mi Plan Financiero</span><span id="sect"></span></h1></div><div style="display:flex;align-items:center;gap:10px"><span class="muted small" id="today"></span><button type="button" id="sync" class="sync stale" data-act="sync-reload" title="Toca para actualizar"><i></i>Conectando…</button><button type="button" class="btn tiny" style="white-space:nowrap" data-act="go-datos">⚙ Mis datos</button></div></header>
   <div class="search" role="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.6-3.6"></path></svg><input id="q" type="search" placeholder="Buscar gastos, cobros, deudas, importes…" autocomplete="off" enterkeyhint="search" aria-label="Buscar"><button type="button" id="q-x" class="qx" hidden aria-label="Borrar la búsqueda"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg></button></div>
   <div id="q-out" class="qout" hidden></div>
   <p id="status" class="card">Cargando tus cuentas. Aquí verás tus próximos cobros, tus gastos y tus deudas.</p>
@@ -339,6 +342,11 @@ const loaded={};
 let db=null,started=false;
 
 function toast(t){const e=$("#toast");e.textContent=t;e.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>e.hidden=true,2600)}
+const SYNC={};let lastSync=0;
+function paintSync(){const b=document.getElementById("sync");if(!b)return;const v=Object.values(SYNC),pend=v.some(x=>x.pend),off=navigator.onLine===false||(v.length&&v.every(x=>x.cache));
+  const ok=!pend&&!off&&lastSync;b.className="sync"+(ok?"":" stale");
+  b.innerHTML=`<i></i>${pend?(off?"Cambios sin subir · sin conexión":"Guardando cambios…"):off?"Sin conexión · toca para actualizar":ok?"Al día · "+new Date(lastSync).toLocaleTimeString("es-ES",{hour:"2-digit",minute:"2-digit"}):"Conectando…"}`}
+window.addEventListener("online",paintSync);window.addEventListener("offline",paintSync);
 async function save(fn,ok){try{await fn();if(ok)toast(ok)}catch(e){toast(e&&e.code==="quota_exceeded"?"Se llenó el espacio de la app. Borra gastos antiguos.":"No se pudo guardar. Revisa tu conexión e inténtalo otra vez.")}}
 const setts=()=>S.settings[0]||{};
 const upd=(c,id,data)=>db.collection(c).doc(id).update(data);
@@ -728,6 +736,7 @@ document.addEventListener("click",ev=>{
   else if(a==="zoe-open"){zoeOpen(id)}
   else if(a==="zoe-cat"){const v=$("#zoe-cat-sel").value;if(v)save(()=>db.collection("settings").doc("main").set({...plainSettings(),photoCat:v}),"Listo")}
   else if(a==="zoe-change"){zoeChangeCat()}
+  else if(a==="sync-reload"){if(navigator.onLine===false)toast("Sin conexión. Tus cambios se guardan en el móvil y se suben solos al volver.");else location.reload()}
   else if(a==="go-datos"){if(Q)clearQ();if(tab()!=="inicio"){location.hash="#inicio"}setTimeout(()=>{const el=$("#mis-datos");if(el)el.scrollIntoView({behavior:"smooth"})},60)}
   else if(a==="backup"){doBackup()}
   else if(a==="import"){$("#imp").value="";$("#imp").click()}
@@ -1071,7 +1080,7 @@ render();
     db={collection:c=>base.collection(c),batch:()=>fs.batch(),email:u.email};
     timer=setTimeout(()=>{if(!COLS.every(c=>loaded[c]))$("#status").textContent="Aún no llegan tus datos. Revisa tu conexión; seguirá intentándolo."},10000);
     COLS.forEach(c=>unsubs.push(db.collection(c).onSnapshot({includeMetadataChanges:true},sn=>{
-      S[c]=sn.docs.map(d=>({...d.data(),id:d.id}));
+      S[c]=sn.docs.map(d=>({...d.data(),id:d.id}));SYNC[c]={pend:sn.metadata.hasPendingWrites,cache:sn.metadata.fromCache};if(!sn.metadata.fromCache&&!sn.metadata.hasPendingWrites)lastSync=Date.now();paintSync();
       if(!sn.metadata.fromCache||sn.size||!navigator.onLine)loaded[c]=true;
       if(COLS.every(x=>loaded[x]))clearTimeout(timer);
       if(!$("#dlg").open)render();
