@@ -256,6 +256,7 @@ details.cat .rows.inner{border:0;border-top:1px solid var(--line);border-radius:
     <section class="section">
       <button type="button" class="btn" data-act="go-zoe" id="zoe-btn" style="justify-self:start">📎 Gastos con factura</button>
       <h2>Añadir un gasto</h2>
+      <div id="cash-card"></div>
       <div class="stack" style="gap:6px"><span class="label">Gasto rápido, se guarda con fecha de hoy</span><div id="quick" class="quick"></div></div>
       <form id="exp-form" class="card grid">
         <div class="two">
@@ -329,8 +330,11 @@ const BASE_CATS=["Deudas","Imprevistos","Otros"];
 const extraCats=()=>{const s=(S.settings[0]||{}).extraCats;const own=String(s||"").split(",").map(x=>x.trim()).filter(Boolean);const used=S.expenses.map(e=>e.cat).filter(Boolean);const bud=S.recurring.filter(r=>r.type==="presupuesto").map(r=>r.name);return [...new Set([...own,...BASE_CATS,...used])].filter(c=>!bud.includes(c))};
 const partner=()=>String((S.settings[0]||{}).partner||"").trim();
 const whoOpts=cur=>[...new Set(["Yo",partner(),cur].filter(Boolean))].map(w=>[w,w]);
-const COLS=["settings","recurring","expenses","debts","upcoming","savings","incomes","notes"];
-const S={settings:[],recurring:[],expenses:[],debts:[],upcoming:[],savings:[],incomes:[],notes:[]};
+const COLS=["settings","recurring","expenses","debts","upcoming","savings","incomes","notes","cash"];
+const S={settings:[],recurring:[],expenses:[],debts:[],upcoming:[],savings:[],incomes:[],notes:[],cash:[]};
+/* Efectivo: los retiros de cajero salen del banco y entran en la cartera; lo pagado en efectivo sale de la cartera, no del banco */
+const isCash=e=>e.pay==="Efectivo";
+function cashNow(){const st=S.settings[0]||{};return (st.cashStart||0)+S.cash.reduce((a,w)=>a+(w.amount||0),0)-S.expenses.filter(isCash).reduce((a,e)=>a+(e.amount||0),0)}
 const loaded={};
 let db=null,started=false;
 
@@ -517,7 +521,8 @@ function ledger(){
   const cob=active().filter(r=>r.type==="cobro"),isPaid=r=>(r.paid||[]).includes(m);
   const paidAll=S.recurring.filter(r=>r.type==="cobro"&&isPaid(r));
   paidAll.forEach(r=>ev.push({d:(r.paidOn&&r.paidOn[m])?parseISO(r.paidOn[m]):new Date(y,mo,Math.min(r.day||1,days)),amt:-(r.amount||0),label:r.name+lastOf(r.id),act:"rec-edit",id:r.id,sub:"Cobro fijo"}));
-  const exps=monthExp(m);exps.filter(e=>!e.cardId).forEach(e=>ev.push({d:parseISO(e.date),amt:-(e.amount||0),label:e.concept,act:e.receipt?"zoe-open":"exp-edit",id:e.id,sub:[e.cat&&capFirst(e.cat),e.place].filter(Boolean).join(" · "),pay:e.pay}));
+  const exps=monthExp(m);exps.filter(e=>!e.cardId&&!isCash(e)).forEach(e=>ev.push({d:parseISO(e.date),amt:-(e.amount||0),label:e.concept,act:e.receipt?"zoe-open":"exp-edit",id:e.id,sub:[e.cat&&capFirst(e.cat),e.place].filter(Boolean).join(" · "),pay:e.pay}));
+  S.cash.filter(w=>(w.date||"").startsWith(m)).forEach(w=>ev.push({d:parseISO(w.date),amt:-(w.amount||0),label:"🏧 Retiro de cajero",act:"atm-edit",id:w.id,sub:w.note||"Pasa a tu efectivo"}));
   const savs=S.savings.filter(x=>x.who==="Yo"&&x.amount>0&&(x.date||"").startsWith(m));
   savs.forEach(x=>ev.push({d:parseISO(x.date),amt:-x.amount,label:"Ahorro",act:"sav-edit",id:x.id,sub:x.note||"Apartado para ahorro"}));
   const byDay=new Map();ev.sort((a,b)=>a.d-b.d).forEach(e=>{const k=e.d.getDate();if(!byDay.has(k))byDay.set(k,[]);byDay.get(k).push(e)});
@@ -565,7 +570,7 @@ function renderInicio(){
   const sim=simulate(st.extra,st.pauseUntil);
   $("#v-inicio").innerHTML=`
   ${alerts.length?`<section class="stack full" aria-label="Avisos">${alerts.map(a=>`<div class="alert ${a.cls}"><div class="grow"><strong>${esc(a.title)}</strong><div class="small">${esc(a.sub)}</div></div>${a.act}</div>`).join("")}</section>`:""}
-  <div class="col"><div class="cell" style="order:1;display:grid;gap:20px;min-width:0">${balanceCard({label:"Te queda ahora, "+dShort(t),big:eur(Math.round(L.now*100)/100),neg:L.now<0,tri:[["Ingresado",eur(L.inc,true)],["Gastado",eur(L.paid+L.exp,true)],["A fin de mes",eur(Math.round(L.end),true),L.end<0?"#FFB4A9":"#8FE3B5"]],foot:`Pendiente de pagar este mes: <strong>${eur(L.pendSum+L.budLeft,true)}</strong>`})}</div><div class="cell" style="order:3;display:grid;gap:20px;min-width:0">${renderLedger(L)}</div><div class="cell" style="order:4;display:grid;gap:20px;min-width:0"><div class="card small">${cashTxt}</div></div></div>
+  <div class="col"><div class="cell" style="order:1;display:grid;gap:20px;min-width:0">${balanceCard({label:"Te queda ahora, "+dShort(t),big:eur(Math.round(L.now*100)/100),neg:L.now<0,tri:[["Ingresado",eur(L.inc,true)],["Gastado",eur(L.paid+L.exp,true)],["A fin de mes",eur(Math.round(L.end),true),L.end<0?"#FFB4A9":"#8FE3B5"]],foot:`Pendiente de pagar este mes: <strong>${eur(L.pendSum+L.budLeft,true)}</strong> · Efectivo en mano: <strong>${eur(Math.round(cashNow()*100)/100)}</strong>`})}</div><div class="cell" style="order:3;display:grid;gap:20px;min-width:0">${renderLedger(L)}</div><div class="cell" style="order:4;display:grid;gap:20px;min-width:0"><div class="card small">${cashTxt}</div></div></div>
   <div class="col"><div class="cell" style="order:2;display:grid;gap:20px;min-width:0">${ringsHtml(true)}</div><div class="cell" style="order:5;display:grid;gap:20px;min-width:0">${renderCierre()}</div><div class="cell" style="order:6;display:grid;gap:20px;min-width:0">${renderTareas()}</div><div class="cell" style="order:7;display:grid;gap:20px;min-width:0">${renderIngresos(M)}</div><div class="cell" style="order:8;display:grid;gap:20px;min-width:0">${renderColchon()}</div></div>
   <section class="section full" id="mis-datos" style="order:9;scroll-margin-top:16px">
     <div class="head"><h2>Mis datos</h2><button class="btn tiny" data-act="settings">Editar</button></div>
@@ -610,6 +615,8 @@ function renderGastos(){
   sel.innerHTML=cats.map(c=>`<option>${esc(c)}</option>`).join("");if(cats.includes(cur))sel.value=cur;
   $("#e-place-l").innerHTML=PLACES().map(c=>`<option value="${esc(c)}"></option>`).join("");
   const ps=$("#e-pay"),pcur=ps.value,pl=PAYS();ps.innerHTML=pl.map(c=>`<option>${esc(c)}</option>`).join("");if(pl.includes(pcur))ps.value=pcur;
+  {const c=cashNow(),wm=S.cash.filter(w=>(w.date||"").startsWith(ym(now()))).sort((a,b)=>(b.date||"").localeCompare(a.date||""));
+   $("#cash-card").innerHTML=`<div class="card stack" style="gap:10px"><div class="head"><div><span class="label">Efectivo en mano</span><div style="font:700 1.5rem var(--display);${c<0?"color:var(--bad)":""}">${eur(Math.round(c*100)/100)}</div></div><div class="actions"><button type="button" class="btn tiny primary" data-act="atm-new">🏧 Retiro de cajero</button><button type="button" class="btn tiny" data-act="cash-adjust">Ajustar</button></div></div><p class="small muted">Cuando saques del cajero, apúntalo aquí: sale del banco y entra en tu efectivo. Lo que pagues con «Efectivo» sale de aquí, no del banco.${c<0?" Si sale en negativo, pulsa «Ajustar» y pon el efectivo que tienes ahora.":""}</p>${wm.length?`<div class="rows">${wm.map(w=>`<button class="row" data-act="atm-edit" data-id="${esc(w.id)}"><div class="grow"><strong>Retiro de cajero</strong><div class="small muted">${esc(dShort(parseISO(w.date)))}${w.note?" · "+esc(w.note):""}</div></div><span class="amt">${eur(w.amount)}</span></button>`).join("")}</div>`:""}</div>`;}
   QUICK=quickList();
   $("#quick").innerHTML=QUICK.map((q,i)=>`<button type="button" class="btn tiny" data-act="quick" data-i="${i}">${esc(q.concept)}${q.place?` (${esc(q.place)})`:""} ${eur(q.amount)}${q.pay?` · ${esc(q.pay)}`:""}</button>`).join("")||'<span class="small muted">Los gastos que repitas aparecerán aquí.</span>';
   const M=month(),m=ym(now());
@@ -726,6 +733,9 @@ document.addEventListener("click",ev=>{
   else if(a==="import"){$("#imp").value="";$("#imp").click()}
   else if(a==="logout"){if(confirm("¿Cerrar sesión en este dispositivo?"))auth.signOut()}
   else if(a==="start-empty"){save(()=>db.collection("settings").doc("main").set({income:0,payPlan:[],payMode:"mensual"}),"Listo. Ahora indica cómo cobras.").then(()=>setTimeout(()=>openPay("mensual"),300))}
+  else if(a==="atm-new"||a==="atm-edit"){const w=a==="atm-edit"?S.cash.find(x=>x.id===id):{date:iso(now())};
+    openForm(a==="atm-new"?"Retiro de cajero":"Editar retiro",[{id:"amount",label:"Cuánto sacaste (€)",type:"money",value:w.amount??"",required:true},{id:"date",label:"Fecha",type:"date",value:w.date,required:true},{id:"note",label:"Nota (opcional)",value:w.note||""}],v=>{if(!(v.amount>0)){toast("Pon un importe mayor que 0");return}save(()=>a==="atm-new"?db.collection("cash").add(v):db.collection("cash").doc(id).update(v),a==="atm-new"?`Retiro guardado. Tu efectivo: ${eur(Math.round((cashNow()+v.amount)*100)/100)}`:"Guardado")},a==="atm-edit"?()=>save(()=>db.collection("cash").doc(id).delete(),"Eliminado"):null,"Sale de tu cuenta del banco y pasa a tu efectivo. Después, lo que pagues con «Efectivo» se descuenta de ahí.")}
+  else if(a==="cash-adjust"){const now0=Math.round(cashNow()*100)/100;openForm("Ajustar efectivo",[{id:"have",label:"Efectivo que tienes ahora (€)",type:"money",value:now0,required:true}],v=>{const st=setts();save(()=>db.collection("settings").doc("main").set({...plainSettings(),cashStart:(st.cashStart||0)+((v.have||0)-now0)}),"Efectivo ajustado")},null,"Cuenta lo que llevas en la cartera y ponlo aquí. Solo cambia tu efectivo, no tu cuenta del banco.")}
   else if(a==="quick"){const q=QUICK[Number(b.dataset.i)];if(q){const d={amount:q.amount,concept:q.concept,place:q.place||"",cat:q.cat,pay:q.pay||"",date:iso(now())};save(()=>addExpense(d),chargeMsg(chargeFor(d),`${q.concept} ${eur(q.amount)} guardado`))}}
   else if(a==="cushion"){const s=setts();openForm("Colchón",[{id:"cushionHave",label:"Lo que tienes apartado (€)",type:"money",value:s.cushionHave??0},{id:"cushionGoal",label:"Meta (€)",type:"money",value:s.cushionGoal??250,hint:"Recomendado: lo que pagas en un mes de gastos fijos básicos."}],v=>save(()=>db.collection("settings").doc("main").set({...plainSettings(),cushionHave:v.cushionHave||0,cushionGoal:v.cushionGoal||0}),"Colchón actualizado"),null,"Es dinero solo para los meses en que entra menos. No es para gastos previstos.")}
   else if(a==="paid"){const r=find("recurring",id),m=ym(now()),p=new Set(r.paid||[]),po={...(r.paidOn||{})};
