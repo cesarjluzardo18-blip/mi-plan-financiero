@@ -515,7 +515,8 @@ function ledger(){
   const incs=S.incomes.filter(i=>(i.date||"").startsWith(m));
   incs.forEach(i=>ev.push({d:parseISO(i.date),amt:i.amount||0,label:i.source||"Ingreso",act:"inc-edit",id:i.id,sub:"Ingreso"}));
   const cob=active().filter(r=>r.type==="cobro"),isPaid=r=>(r.paid||[]).includes(m);
-  cob.filter(isPaid).forEach(r=>ev.push({d:(r.paidOn&&r.paidOn[m])?parseISO(r.paidOn[m]):new Date(y,mo,Math.min(r.day||1,days)),amt:-(r.amount||0),label:r.name+lastOf(r.id),act:"rec-edit",id:r.id,sub:"Cobro fijo"}));
+  const paidAll=S.recurring.filter(r=>r.type==="cobro"&&isPaid(r));
+  paidAll.forEach(r=>ev.push({d:(r.paidOn&&r.paidOn[m])?parseISO(r.paidOn[m]):new Date(y,mo,Math.min(r.day||1,days)),amt:-(r.amount||0),label:r.name+lastOf(r.id),act:"rec-edit",id:r.id,sub:"Cobro fijo"}));
   const exps=monthExp(m);exps.filter(e=>!e.cardId).forEach(e=>ev.push({d:parseISO(e.date),amt:-(e.amount||0),label:e.concept,act:e.receipt?"zoe-open":"exp-edit",id:e.id,sub:[e.cat&&capFirst(e.cat),e.place].filter(Boolean).join(" · "),pay:e.pay}));
   const savs=S.savings.filter(x=>x.who==="Yo"&&x.amount>0&&(x.date||"").startsWith(m));
   savs.forEach(x=>ev.push({d:parseISO(x.date),amt:-x.amount,label:"Ahorro",act:"sav-edit",id:x.id,sub:x.note||"Apartado para ahorro"}));
@@ -533,7 +534,7 @@ function ledger(){
   const dated=[...expInc,...futCob.filter(x=>x.day)].sort((a,b)=>a.day-b.day||b.amt-a.amt),undated=futCob.filter(x=>!x.day);
   if(budLeft)undated.push({day:null,amt:-budLeft,label:"Lo que te queda de tus presupuestos"+(budgets().length?" ("+budgets().map(b=>b.name).join(", ")+")":""),kind:"bud"});
   let r2=run;const fut=[...dated,...undated].map(x=>{r2+=x.amt;return{...x,run:r2}});
-  return{rows,now:run,pend,pendSum,budLeft,fut,expSum,end:run+expSum-pendSum-budLeft,inc:sum(incs),paid:sum(cob.filter(isPaid)),exp:sum(exps.filter(e=>!e.cardId))+sum(savs),empty:!ev.length};
+  return{rows,now:run,pend,pendSum,budLeft,fut,expSum,end:run+expSum-pendSum-budLeft,inc:sum(incs),paid:sum(paidAll),exp:sum(exps.filter(e=>!e.cardId))+sum(savs),empty:!ev.length};
 }
 const OPEN_DAYS=new Set();
 document.addEventListener("toggle",ev=>{const d=ev.target;if(d&&d.matches&&d.matches("details.day")){if(d.open)OPEN_DAYS.add(d.dataset.day);else OPEN_DAYS.delete(d.dataset.day)}},true);
