@@ -305,6 +305,36 @@ nav a.on .ni{background:linear-gradient(135deg,#3E8BFF,#8E6BFF);box-shadow:0 0 1
   .ghero{min-height:300px}
   .orb{width:360px;margin:-40px 0 -30px 0}
 }
+
+/* dashboard */
+.tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;order:0}
+.tile{all:unset;box-sizing:border-box;cursor:pointer;display:grid;gap:8px;align-content:start;padding:14px;min-height:122px;border-radius:18px;background:rgba(17,24,56,.62);border:1px solid rgba(127,160,255,.24);box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 8px 30px rgba(0,0,0,.28);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);min-width:0;transition:border-color .15s,transform .15s}
+.tile:hover{border-color:rgba(127,233,255,.5)}.tile:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.tile .ti{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;color:var(--c);border:1px solid var(--c);background:color-mix(in srgb,var(--c) 12%,transparent);box-shadow:0 0 12px color-mix(in srgb,var(--c) 35%,transparent)}
+.tile .ti svg{width:18px;height:18px}
+.tile b{font:700 clamp(1.2rem,5.4vw,1.55rem)/1.1 var(--display);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#F4F7FF}
+.tile .tl{display:flex;justify-content:space-between;align-items:flex-end;gap:6px;font-size:.78rem;color:var(--muted);line-height:1.25}
+.tile .tl>span{min-width:0;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.spk{width:56px;height:22px;flex:0 0 auto;filter:drop-shadow(0 0 4px currentColor);overflow:visible}
+.dash2{display:grid;gap:20px;order:2;min-width:0}
+.gring .gr{display:grid;grid-template-columns:128px minmax(0,1fr);gap:18px;align-items:center}
+.gring .gr svg{width:128px;height:128px;display:block}
+.gl{display:grid;gap:10px}.gl div{display:grid;gap:1px}.gl span{font-size:.8125rem;color:var(--muted);display:flex;align-items:center;gap:6px}.gl i{width:8px;height:8px;border-radius:50%}.gl b{font:700 1.05rem var(--display)}
+.wbars{display:flex;gap:10px;align-items:stretch;height:118px}
+.wb{flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:5px}
+.wb i{width:14px;border-radius:99px;background:linear-gradient(180deg,rgba(62,230,255,.55),rgba(142,107,255,.55));min-height:4px}
+.wb.on i{background:linear-gradient(180deg,#3EE6FF,#8E6BFF);box-shadow:0 0 12px rgba(62,230,255,.6)}
+.wb small{font-size:.6875rem;color:var(--muted);white-space:nowrap}.wb span{font-size:.72rem;color:var(--muted)}.wb.on span{color:#fff;font-weight:700}
+.gplus{width:44px;height:44px;border-radius:50%;border:0;cursor:pointer;display:grid;place-items:center;color:#fff;background:linear-gradient(135deg,#8E6BFF,#3E8BFF);box-shadow:0 0 16px rgba(142,107,255,.55);padding:0}
+.gplus svg{width:20px;height:20px}
+.glast .pc-h{align-items:center}
+.gls{display:grid;gap:6px}
+.gli{all:unset;box-sizing:border-box;cursor:pointer;display:flex;align-items:center;gap:12px;padding:9px 10px;border-radius:14px;background:rgba(255,255,255,.03);min-width:0}
+.gli:hover{background:rgba(127,160,255,.1)}.gli:focus-visible{outline:2px solid var(--accent)}
+.gli .gic{width:38px;height:38px;flex:0 0 auto;border-radius:12px;display:grid;place-items:center;font:700 1rem var(--display);color:#7FE9FF;background:rgba(127,233,255,.08);border:1px solid rgba(127,233,255,.22)}
+.gli .grow{flex:1;min-width:0;display:grid}.gli strong{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.gli small{font-size:.75rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media (max-width:420px){.gli .pay{display:none}}
+@media (min-width:960px){.tiles{grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}.tile{padding:18px}.dash2{order:0;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:24px 28px}.spk{width:72px;height:26px}}
 </style>
 
 <div class="wrap">
@@ -639,6 +669,7 @@ function renderInicio(){
   $("#v-inicio").innerHTML=`
   ${galaxyHero(L)}
   ${alerts.length?`<section class="stack full" aria-label="Avisos">${alerts.map(a=>`<div class="alert ${a.cls}"><div class="grow"><strong>${esc(a.title)}</strong><div class="small">${esc(a.sub)}</div></div>${a.act}</div>`).join("")}</section>`:""}
+  ${dashHtml(L)}
   <div class="col"><div class="cell" style="order:1;display:grid;gap:20px;min-width:0">${balanceCard({label:"Te queda ahora, "+dShort(t),big:eur(Math.round(L.now*100)/100),neg:L.now<0,tri:[["Ingresado",eur(L.inc,true)],["Gastado",eur(L.paid+L.exp,true)],["A fin de mes",eur(Math.round(L.end),true),L.end<0?"#FFB4A9":"#8FE3B5"]],foot:`Pendiente de pagar este mes: <strong>${eur(L.pendSum+L.budLeft,true)}</strong> · Efectivo en mano: <strong>${eur(Math.round(cashNow()*100)/100)}</strong>`})}</div><div class="cell" style="order:3;display:grid;gap:20px;min-width:0">${renderLedger(L)}</div><div class="cell" style="order:4;display:grid;gap:20px;min-width:0"><div class="card small">${cashTxt}</div></div></div>
   <div class="col"><div class="cell" style="order:2;display:grid;gap:20px;min-width:0">${ringsHtml(true)}</div><div class="cell" style="order:5;display:grid;gap:20px;min-width:0">${renderCierre()}</div><div class="cell" style="order:6;display:grid;gap:20px;min-width:0">${renderTareas()}</div><div class="cell" style="order:7;display:grid;gap:20px;min-width:0">${renderIngresos(M)}</div><div class="cell" style="order:8;display:grid;gap:20px;min-width:0">${renderColchon()}</div></div>
   <section class="section full" id="mis-datos" style="order:9;scroll-margin-top:16px">
@@ -793,6 +824,7 @@ document.addEventListener("click",ev=>{
   if(a==="push"){enablePush()}
   else if(a==="open-cat"){OPEN_CATS.add(b.dataset.cat);if(Q)clearQ();location.hash="#gastos";setTimeout(()=>{const el=[...document.querySelectorAll("details.cat")].find(x=>x.dataset.cat===b.dataset.cat);if(el){el.open=true;el.scrollIntoView({behavior:"smooth",block:"start"})}},80)}
   else if(a==="go-zoe"){location.hash="#zoe"}
+  else if(a==="go-tab"){if(Q)clearQ();const tb=b.dataset.tab;if(tb==="inicio"){const el=document.querySelector("#v-inicio .phero");if(el)el.scrollIntoView({behavior:"smooth",block:"center"})}else location.hash="#"+tb}
   else if(a==="zoe-new"){zoeForm()}
   else if(a==="zoe-open"){zoeOpen(id)}
   else if(a==="zoe-cat"){const v=$("#zoe-cat-sel").value;if(v)save(()=>db.collection("settings").doc("main").set({...plainSettings(),photoCat:v}),"Listo")}
@@ -932,6 +964,34 @@ function orbSvg(warn){const k=warn?"w":"n";if(ORB[k])return ORB[k];
 <g class="o-spin" filter="url(#gx-bl${k})" stroke-width=".8">${L}${D}</g>
 <circle cx="150" cy="140" r="102" fill="none" stroke="${C.a}" stroke-opacity=".55" stroke-width="1.4" filter="url(#gx-bl${k})"/><circle cx="150" cy="140" r="6" fill="#fff" filter="url(#gx-bl${k})"/>
 ${bub(34,34,11,0)}${bub(270,42,7,1.2)}${bub(262,232,14,2.1)}${bub(52,226,6,.6)}${bub(118,16,4,1.7)}</svg>`}
+function spk(vals,c){if(!vals||vals.length<2)vals=[0,0];const mn=Math.min(...vals),mx=Math.max(...vals),r=mx-mn||1,w=64,h=24;
+  const pts=vals.map((v,i)=>`${(i/(vals.length-1)*w).toFixed(1)},${(h-2-(v-mn)/r*(h-4)).toFixed(1)}`).join(" ");
+  return`<svg class="spk" viewBox="0 0 ${w} ${h}" aria-hidden="true"><polyline points="${pts}" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`}
+const DI={bank:'<path d="M3 10l9-6 9 6M5 10v9M19 10v9M9 10v9M15 10v9M3 21h18"/>',cash:'<rect x="3" y="7" width="18" height="10" rx="2"/><circle cx="12" cy="12" r="2"/>',down:'<path d="M12 5v14M6 13l6 6 6-6"/>',cal:'<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M8 3v4M16 3v4"/>'};
+function dashHtml(L){const t=now(),m=ym(t),td=t.getDate(),days=dim(t),out=L.paid+L.exp;
+  const bank=[0,...L.rows.map(r=>r.run)];
+  let c=0,o=0;const cashS=[],outS=[];const ex=monthExp(m),wd=S.cash.filter(w=>(w.date||"").startsWith(m));
+  for(let d=1;d<=td;d++){const k=`${m}-${String(d).padStart(2,"0")}`;c+=wd.filter(w=>w.date===k).reduce((a,w)=>a+(w.amount||0),0)-ex.filter(e=>isCash(e)&&e.date===k).reduce((a,e)=>a+(e.amount||0),0);cashS.push(c);
+    const r=L.rows.find(x=>x.day===d);o+=r?r.list.filter(e=>e.amt<0).reduce((a,e)=>a-e.amt,0):0;outS.push(o)}
+  const nx=L.pend.find(p=>p.day&&p.day>=td)||L.pend[0];
+  const T=[{l:"En el banco",v:eur(Math.round(L.now*100)/100),c:"#7FE9FF",i:DI.bank,s:spk(bank,"#7FE9FF"),a:'data-act="go-tab" data-tab="inicio"'},
+    {l:"Efectivo en mano",v:eur(Math.round(cashNow()*100)/100),c:"#6FF0C0",i:DI.cash,s:spk(cashS,"#6FF0C0"),a:'data-act="go-tab" data-tab="gastos"'},
+    {l:"Gastado este mes",v:eur(Math.round(out*100)/100),c:"#B9A4FF",i:DI.down,s:spk(outS,"#B9A4FF"),a:'data-act="go-tab" data-tab="gastos"'},
+    {l:nx?`Próximo cobro: ${nx.name}${nx.day?", día "+nx.day:""}`:"Cobros del mes",v:nx?eur(nx.amount):"Todo pagado",c:"#FFC46B",i:DI.cal,s:"",a:'data-act="go-tab" data-tab="cobros"'}];
+  const tiles=`<section class="tiles full" aria-label="Resumen">${T.map(x=>`<button type="button" class="tile" ${x.a}><span class="ti" style="--c:${x.c}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${x.i}</svg></span><b>${x.v}</b><span class="tl"><span>${esc(x.l)}</span>${x.s}</span></button>`).join("")}</section>`;
+  const pct=L.inc>0?Math.min(100,Math.round(out/L.inc*100)):0,C=2*Math.PI*52,warn=pct>=90;
+  const wk=[0,0,0,0,0];L.rows.forEach(r=>{wk[Math.min(4,Math.floor((r.day-1)/7))]+=r.list.filter(e=>e.amt<0).reduce((a,e)=>a-e.amt,0)});
+  const nW=Math.ceil(days/7),cw=Math.min(nW-1,Math.floor((td-1)/7)),mxw=Math.max(1,...wk);
+  const bars=wk.slice(0,nW).map((v,i)=>`<div class="wb${i===cw?" on":""}" title="Semana ${i+1}: ${eur(Math.round(v))}"><small>${v?eur(Math.round(v),true):""}</small><i style="height:${Math.max(4,v/mxw*100)}%"></i><span>Sem ${i+1}</span></div>`).join("");
+  const mes=t.toLocaleDateString("es-ES",{month:"long"});
+  const ring=`<section class="pc gring"><div class="pc-h"><h3>Cómo va ${esc(mes)}</h3><span>Día ${td} de ${days}</span></div>
+   <div class="gr"><svg viewBox="0 0 128 128" role="img" aria-label="Has gastado el ${pct} % de lo que entró"><defs><linearGradient id="gx-rg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${warn?"#FFC46B":"#3EE6FF"}"/><stop offset="1" stop-color="${warn?"#FF7A8A":"#8E6BFF"}"/></linearGradient></defs><circle cx="64" cy="64" r="52" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="12"/><circle cx="64" cy="64" r="52" fill="none" stroke="url(#gx-rg)" stroke-width="12" stroke-linecap="round" stroke-dasharray="${(C*pct/100).toFixed(1)} ${C.toFixed(1)}" transform="rotate(-90 64 64)" style="filter:drop-shadow(0 0 6px ${warn?"#FFC46B":"#3EE6FF"})"/><text x="64" y="64" text-anchor="middle" fill="#F4F7FF" style="font:700 26px var(--display)">${pct} %</text><text x="64" y="83" text-anchor="middle" fill="#9FAACB" style="font:500 11px var(--body)">gastado</text></svg>
+   <div class="gl"><div><span><i style="background:#3EE6FF"></i>Entró</span><b>${eur(Math.round(L.inc*100)/100)}</b></div><div><span><i style="background:#8E6BFF"></i>Salió</span><b>${eur(Math.round(out*100)/100)}</b></div><div><span><i style="background:#FFC46B"></i>Por pagar</span><b>${eur(Math.round((L.pendSum+L.budLeft)*100)/100)}</b></div></div></div>
+   <div class="wbars">${bars}</div></section>`;
+  const last=[...S.expenses].sort((a,b)=>(b.date||"").localeCompare(a.date||"")).slice(0,5);
+  const lg=`<section class="pc glast"><div class="pc-h"><h3>Últimos gastos</h3><button type="button" class="gplus" data-act="go-tab" data-tab="gastos" aria-label="Añadir un gasto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button></div>
+   ${last.length?`<div class="gls">${last.map(e=>`<button type="button" class="gli" data-act="${e.receipt?"zoe-open":"exp-edit"}" data-id="${esc(e.id)}"><span class="gic">${esc((e.concept||"?").trim().charAt(0).toUpperCase())}</span><span class="grow"><strong>${esc(e.concept||"Gasto")}</strong><small>${esc(dShort(parseISO(e.date)))}${e.place?" · "+esc(e.place):""}</small></span>${e.pay?`<span class="pay ${payCls(e.pay)}">${esc(e.pay)}</span>`:""}<span class="amt">−${eur(e.amount||0)}</span></button>`).join("")}</div>`:`<p class="small muted">Aún no has anotado gastos.</p>`}</section>`;
+  return tiles+`<section class="dash2 full">${ring}${lg}</section>`}
 function galaxyHero(L){const h=now().getHours(),n=String(setts().name||"").trim(),cap=n?n.charAt(0).toUpperCase()+n.slice(1).toLowerCase():"";
   const g=h>=6&&h<13?"Buenos días":h>=13&&h<20?"Buenas tardes":"Buenas noches",warn=L.end<0||L.now<0;
   return`<section class="ghero full" style="order:0"><div class="gtxt"><span class="g1">${g}${cap?",":""}</span>${cap?`<span class="g2">${esc(cap)}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l2.2 7.8L22 12l-7.8 2.2L12 22l-2.2-7.8L2 12l7.8-2.2z" fill="${warn?"#FFC46B":"#7FE9FF"}"/></svg></span>`:""}<span class="g3">${warn?"Este mes va justo: revisa los gastos que puedas aplazar.":"«Cada euro con un plan, cada mes un paso más.»"}</span></div><div class="orb">${orbSvg(warn)}</div></section>`}
