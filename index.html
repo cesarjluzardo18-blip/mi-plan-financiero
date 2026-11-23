@@ -408,10 +408,17 @@ nav .nplus:focus-visible .np,nav .nmore:focus-visible{outline:2px solid #7FE9FF;
 .more-i svg{width:24px;height:24px;color:#7FE9FF}
 .more-i.on{border-color:rgba(127,233,255,.6);background:rgba(62,139,255,.25)}
 .more-i:focus-visible{outline:2px solid #7FE9FF}
+
+.bell{all:unset;box-sizing:border-box;cursor:pointer;display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:5px 12px;border-radius:99px;font:700 .75rem var(--body);color:#FFC46B;border:1px solid rgba(255,196,107,.5);background:rgba(255,196,107,.1);white-space:nowrap}
+.bell svg{width:16px;height:16px}
+.bell.on{color:#6FF0C0;border-color:rgba(111,240,192,.45);background:rgba(111,240,192,.1)}
+.bell:focus-visible{outline:2px solid #7FE9FF;outline-offset:2px}
+@media (max-width:420px){.bell .bl{display:none}.bell{padding:5px 9px}}
+.top>div:last-child{flex-wrap:wrap;justify-content:flex-end}
 </style>
 
 <div class="wrap">
-  <header class="top"><div class="hb"><span class="hlogo" aria-hidden="true">M</span><div><div class="hkick">MI PLAN FINANCIERO</div><h1><span class="t-app" hidden>Mi Plan Financiero</span><span id="sect"></span></h1><div id="hello" hidden>Hola</div></div></div><div style="display:flex;align-items:center;gap:10px"><span class="muted small" id="today"></span><button type="button" id="sync" class="sync stale" data-act="sync-reload" title="Toca para actualizar"><i></i>Conectando…</button><button type="button" class="btn tiny" style="white-space:nowrap" data-act="go-datos">⚙ Mis datos</button></div></header>
+  <header class="top"><div class="hb"><span class="hlogo" aria-hidden="true">M</span><div><div class="hkick">MI PLAN FINANCIERO</div><h1><span class="t-app" hidden>Mi Plan Financiero</span><span id="sect"></span></h1><div id="hello" hidden>Hola</div></div></div><div style="display:flex;align-items:center;gap:10px"><span class="muted small" id="today"></span><button type="button" id="sync" class="sync stale" data-act="sync-reload" title="Toca para actualizar"><i></i>Conectando…</button><button type="button" id="bell" class="bell" data-act="push" aria-label="Activar avisos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg><span class="bl">Avisos</span></button><button type="button" class="btn tiny" style="white-space:nowrap" data-act="go-datos">⚙ Mis datos</button></div></header>
   <div class="search" role="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.6-3.6"></path></svg><input id="q" type="search" placeholder="Buscar gastos, cobros, deudas, importes…" autocomplete="off" enterkeyhint="search" aria-label="Buscar"><button type="button" id="q-x" class="qx" hidden aria-label="Borrar la búsqueda"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg></button></div>
   <div id="q-out" class="qout" hidden></div>
   <p id="status" class="card">Cargando tus cuentas. Aquí verás tus próximos cobros, tus gastos y tus deudas.</p>
@@ -869,6 +876,7 @@ function foldHelp(){document.querySelectorAll(".view p.small.muted").forEach(p=>
 function render(){
   const ready=COLS.every(c=>loaded[c]);
   $("#today").textContent=dLong(now());
+  {const b=$("#bell");if(b){const on=pushOn();b.classList.toggle("on",on);b.setAttribute("aria-label",on?"Avisos activados en este dispositivo":"Activar avisos");b.querySelector(".bl").textContent=on?"Avisos activados":"Activar avisos"}}
   {const n=String(setts().name||"").trim();$("#hello").textContent=n?`Hola, ${n}`:"Hola"}
   if(!ready)return;
   if(!S.settings.length&&!S.recurring.length){$("#status").hidden=false;$("#status").innerHTML='Todavía no hay datos en tu cuenta. Si tienes una copia de seguridad, impórtala para empezar con tus datos. <span style="display:block;margin-top:10px"><button class="btn primary" data-act="import">Importar copia</button> <button class="btn" data-act="start-empty">Empezar desde cero</button></span>';return}
